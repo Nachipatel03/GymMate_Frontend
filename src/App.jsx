@@ -1,12 +1,16 @@
+import { Routes, Route } from "react-router-dom";
+import Home from "@/pages/Home";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import AdminDashboard from "@/pages/Dashboard/AdminDashboard";
+
 export default function App() {
   return (
-    <div className="container mt-5">
-      <h1 className="text-success text-center">
-        Bootstrap is working ✅
-      </h1>
-      <button className="btn btn-primary mt-3">
-        Click me
-      </button>
-    </div>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/admindashboard" element={<AdminDashboard />} />
+    </Routes>
   );
 }
