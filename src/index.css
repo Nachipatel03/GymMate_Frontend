@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+[data-radix-select-content] {
+  @apply bg-slate-900 border border-slate-700 text-white;
+}
+
+[data-radix-select-item] {
+  @apply text-white;
+}
+
+[data-radix-select-item][data-highlighted] {
+  @apply bg-slate-800 text-white;
+}

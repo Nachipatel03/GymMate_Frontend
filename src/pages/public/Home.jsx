@@ -74,8 +74,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050816] text-white overflow-x-hidden">
-
+    <div className="min-h-screen bg-slate-950 relative overflow-hidden">
       {/* ================= NAVBAR ================= */}
       <nav className="w-full border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <div className="flex items-center justify-between h-[88px] px-6 sm:px-10 lg:px-16">
@@ -111,12 +110,12 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-3xl mx-auto"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-400 text-sm mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-400 text-sm font-medium mb-8">
             <Zap className="w-4 h-4" />
             Ultimate Fitness Platform
           </div>
 
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6">
             Transform Your
             <span className="block text-violet-400">Fitness Journey</span>
           </h1>
