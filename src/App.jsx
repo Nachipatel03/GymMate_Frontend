@@ -27,7 +27,7 @@ export default function App() {
       <Route path="/membershipplans" element={<MembershipPlans />} />
       <Route path="/attendanceoverview" element={<AttendanceOverview />} />
       <Route path="/paymentsrevenue" element={<PaymentsRevenue />} />
-      <Route path="//memberdashboard" element={<MemberDashboard />} />
+      <Route path="/memberdashboard" element={<MemberDashboard />} />
       <Route path="/myworkout" element={<MyWorkout />} />
       <Route path="/mydiet" element={<MyDiet />} />
       <Route path="/myprogress" element={<MyProgress />} />

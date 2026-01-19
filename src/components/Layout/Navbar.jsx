@@ -36,13 +36,14 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
 
   /* ================= LOGOUT ================= */
   const handleLogout = () => {
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
     navigate("/login");
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50">
+    <header className="sticky top-0 p-3 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50">
       <div className="flex items-center justify-between px-4 lg:px-6 h-16">
 
         {/* LEFT */}
@@ -66,7 +67,7 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
         </div>
 
         {/* SEARCH */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
+        {/* <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -74,7 +75,7 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
               className="w-full pl-10 bg-slate-800/50 border-slate-700 text-white"
             />
           </div>
-        </div>
+        </div> */}
 
         {/* RIGHT */}
         <div className="flex items-center gap-2">
@@ -94,13 +95,13 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
               >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                   <span className="text-white text-sm font-medium">
-                    {user?.full_name?.charAt(0) || "U"}
+                    {user?.username?.charAt(0) || "U"}
                   </span>
                 </div>
 
                 <div className="hidden sm:block text-left">
                   <p className="text-sm font-medium text-white">
-                    {user?.full_name}
+                    {user?.username}
                   </p>
                   <p className="text-xs text-slate-400 capitalize">
                     {user?.role}
