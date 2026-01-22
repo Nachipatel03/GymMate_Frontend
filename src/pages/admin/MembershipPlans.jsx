@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -32,54 +32,34 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-/* -------------------------------------------------------------------------- */
-/*                               STATIC DATA                                  */
-/*                   TODO: Replace with API later                              */
-/* -------------------------------------------------------------------------- */
+import axios from "axios";
+import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
-const INITIAL_PLANS = [
-  {
-    id: "basic",
-    name: "Basic Plan",
-    type: "basic",
-    duration_months: 1,
-    price: 29,
-    features: ["Gym Access", "Locker Room", "Basic Equipment"],
-    is_active: true,
-  },
-  {
-    id: "premium",
-    name: "Premium Plan",
-    type: "premium",
-    duration_months: 3,
-    price: 79,
-    features: [
-      "Gym Access",
-      "Personal Trainer",
-      "All Equipment",
-      "Group Classes",
-      "Sauna Access",
-    ],
-    is_active: true,
-  },
-  {
-    id: "vip",
-    name: "VIP Plan",
-    type: "vip",
-    duration_months: 12,
-    price: 249,
-    features: [
-      "24/7 Gym Access",
-      "Personal Trainer",
-      "All Equipment",
-      "Group Classes",
-      "Spa & Sauna",
-      "Nutrition Plan",
-      "Priority Support",
-    ],
-    is_active: true,
-  },
-];
+
+// const resupdate = await axios.put(
+//   apiRoutes.baseUrl +
+//   apiRoutes.Plans +
+//   `membership-plans/${editingPlan.id}/`,
+//   payload,
+//   {
+//     headers: {
+//       Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+//     },
+//   }
+// );
+
+
+// await axios.delete(
+//   apiRoutes.baseUrl +
+//   apiRoutes.Plans +
+//   `membership-plans/${plan.id}/`,
+//   {
+//     headers: {
+//       Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+//     },
+//   }
+// );
+
 
 const planColors = {
   basic: "from-slate-500 to-slate-600",
@@ -98,9 +78,8 @@ const planIcons = {
 /* -------------------------------------------------------------------------- */
 
 export default function MembershipPlans() {
-  const [plans, setPlans] = useState(INITIAL_PLANS);
-  // TODO: Replace with API data
 
+  const [plans, setPlans] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
 
@@ -112,6 +91,70 @@ export default function MembershipPlans() {
     features: "",
     is_active: true,
   });
+
+
+
+  /* -------------------- GET -------------------- */
+  const fetchPlans = async () => {
+    try {
+      const resget = await axios.get(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin +
+        apiRoutes.Plans,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      console.log("API response:", resget.data);
+      setPlans(resget.data);
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch plans");
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  /* -------------------- POST -------------------- */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      ...formData,
+      price: Number(formData.price),
+      features: formData.features
+        .split("\n")
+        .map((f) => f.trim())
+        .filter(Boolean),
+    };
+
+    try {
+      await axios.post(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin + apiRoutes.Plans,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      toast.success("Plan created");
+      fetchPlans();
+      resetForm();
+    } catch {
+      toast.error("Failed to create plan");
+    }
+  };
+
+
 
   /* ------------------------------ HELPERS ---------------------------------- */
 
@@ -143,40 +186,8 @@ export default function MembershipPlans() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
 
-    const payload = {
-      ...formData,
-      price: Number(formData.price),
-      features: formData.features
-        .split("\n")
-        .map((f) => f.trim())
-        .filter(Boolean),
-    };
 
-    if (editingPlan) {
-      // TODO: UPDATE PLAN API
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === editingPlan.id ? { ...p, ...payload } : p
-        )
-      );
-      toast.success("Plan updated");
-    } else {
-      // TODO: CREATE PLAN API
-      setPlans((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          ...payload,
-        },
-      ]);
-      toast.success("Plan created");
-    }
-
-    resetForm();
-  };
 
   const handleDelete = (plan) => {
     if (confirm(`Delete ${plan.name}?`)) {
@@ -225,9 +236,8 @@ export default function MembershipPlans() {
               >
                 <GlassCard className="overflow-hidden h-full">
                   <div
-                    className={`bg-gradient-to-r ${
-                      planColors[plan.type]
-                    } p-6`}
+                    className={`bg-gradient-to-r ${planColors[plan.type]
+                      } p-6`}
                   >
                     {/* {Icon && (
                       <Icon className="w-8 h-8 text-white/80 mb-3" />

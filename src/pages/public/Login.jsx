@@ -25,7 +25,7 @@ const ROLE_REDIRECT = {
 /* ---------- API FUNCTION ---------- */
 const loginUser = (data) => {
   return axios.post(
-    `${import.meta.env.VITE_API_BASE_URL}login/`,
+    `${import.meta.env.VITE_API_BASE_URL}auth/login/`,
     data
   );
 };

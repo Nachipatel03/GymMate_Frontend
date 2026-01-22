@@ -8,7 +8,7 @@ const axiosInstance = axios.create({
 });
 
 // 🔁 Refresh token API endpoint
-const REFRESH_URL = import.meta.env.VITE_API_BASE_URL +"token/refresh/";
+const REFRESH_URL = import.meta.env.VITE_API_BASE_URL +"auth/token/refresh/";
 
 // 🔍 Helper: Check if token is expired
 function isTokenExpired(token) {

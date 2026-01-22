@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/card";
 import { Dumbbell, Eye, EyeOff } from "lucide-react";
 
+import axios from "axios";
+import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -44,17 +47,42 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // 🔁 Replace with real Django API later
-      console.log("Register payload:", form);
+      const payload = {
+        full_name: form.name,   // 🔥 FIX
+        email: form.email.toLowerCase(),
+        password: form.password,
+      };
 
-      // fake success
+      await axios.post(
+         apiRoutes.baseUrl +apiRoutes.Auth+
+        apiRoutes.MemberRegister, // e.g. http://127.0.0.1:8000/members/register/
+        payload
+      );
+
+      // ✅ success → redirect to login
       navigate("/login");
     } catch (err) {
-      setError("Registration failed. Try again.");
+      // 🔥 Backend error handling
+      if (err.response && err.response.data) {
+        const data = err.response.data;
+
+        if (data.email) {
+          setError(data.email[0]); // "This email is already registered."
+        } else if (data.password) {
+          setError(data.password[0]);
+        } else if (data.detail) {
+          setError(data.detail);
+        } else {
+          setError("Registration failed");
+        }
+      } else {
+        setError("Server error. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#050816] flex items-center justify-center px-4">

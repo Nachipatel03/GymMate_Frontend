@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
@@ -31,44 +31,15 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-/* -------------------------------------------------------------------------- */
-/*                               STATIC DATA                                  */
-/*                   TODO: Replace with API response                           */
-/* -------------------------------------------------------------------------- */
 
-const INITIAL_MEMBERS = [
-  {
-    id: 1,
-    full_name: "Rahul Patel",
-    email: "rahul@gmail.com",
-    phone: "9876543210",
-    membership_plan: "premium",
-    status: "active",
-    goal: "muscle_gain",
-    height: 175,
-    weight: 75,
-    created_date: "2025-01-10",
-    assigned_trainer_id: "t1",
-  },
-  {
-    id: 2,
-    full_name: "Amit Shah",
-    email: "amit@gmail.com",
-    phone: "9123456780",
-    membership_plan: "basic",
-    status: "inactive",
-    goal: "weight_loss",
-    height: 168,
-    weight: 82,
-    created_date: "2025-02-05",
-    assigned_trainer_id: "none",
-  },
-];
+import axios from "axios";
+import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
-const TRAINERS = [
-  { id: "t1", full_name: "Trainer John" },
-  { id: "t2", full_name: "Trainer Alex" },
-];
+
+
+
+
+
 
 /* -------------------------------------------------------------------------- */
 /*                                COMPONENT                                   */
@@ -77,8 +48,62 @@ const TRAINERS = [
 export default function ManageMembers() {
   /* ------------------------------ STATE ----------------------------------- */
 
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
-  // TODO: Replace with API data
+  const [members, setMembers] = useState([]);
+  const [trainers, setTrainers] = useState([]);
+
+  const fetchMembers = async () => {
+    try {
+      const res = await axios.get(
+        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
+
+      setMembers(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch members");
+    }
+  };
+
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+
+  const fetchTrainers = async () => {
+    try {
+      const res = await axios.get(
+        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Trainers,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
+
+      setTrainers(data);
+    } catch (error) {
+      toast.error("Failed to load trainers");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrainers();
+  }, []);
+
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -95,9 +120,8 @@ export default function ManageMembers() {
     goal: "maintenance",
     height: "",
     weight: "",
-    assigned_trainer_id: "none",
+    assigned_trainer_id: "none", // ✅ MUST exist
   });
-
   /* --------------------------- FILTER LOGIC -------------------------------- */
 
   const filteredMembers = useMemo(() => {
@@ -125,49 +149,47 @@ export default function ManageMembers() {
       goal: "maintenance",
       height: "",
       weight: "",
-      assigned_trainer_id: "none",
+      assigned_trainer_id: "none", // ✅ required
     });
+
     setEditingMember(null);
     setIsModalOpen(false);
   };
 
   /* ------------------------------ CRUD ------------------------------------- */
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const payload = {
       ...formData,
+      email: formData.email.toLowerCase(),
       height: formData.height ? Number(formData.height) : null,
       weight: formData.weight ? Number(formData.weight) : null,
-      assigned_trainer_id:
+      assigned_trainer:
         formData.assigned_trainer_id === "none"
           ? null
           : formData.assigned_trainer_id,
     };
 
-    if (editingMember) {
-      // TODO: UPDATE MEMBER API
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.id === editingMember.id ? { ...m, ...payload } : m
-        )
-      );
-      toast.success("Member updated");
-    } else {
-      // TODO: CREATE MEMBER API
-      setMembers((prev) => [
-        ...prev,
+    try {
+      await axios.post(
+        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
+        payload,
         {
-          id: Date.now(),
-          ...payload,
-          created_date: new Date().toISOString(),
-        },
-      ]);
-      toast.success("Member created");
-    }
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
 
-    resetForm();
+      toast.success("Member created");
+      fetchMembers();
+      resetForm();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create member");
+    }
   };
 
   const handleEdit = (member) => {
@@ -226,7 +248,9 @@ export default function ManageMembers() {
     {
       header: "Joined",
       render: (row) =>
-        format(new Date(row.created_date), "MMM dd, yyyy"),
+        row.created_at
+          ? format(new Date(row.created_at), "MMM dd, yyyy")
+          : "-",
     },
     {
       header: "Actions",
@@ -286,10 +310,10 @@ export default function ManageMembers() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
+              <SelectItem key="all" value="all">All</SelectItem>
+              <SelectItem key="active" value="active">Active</SelectItem>
+              <SelectItem key="inactive" value="inactive">Inactive</SelectItem>
+              <SelectItem key="expired" value="expired">Expired</SelectItem>
             </SelectContent>
           </Select>
         </GlassCard>
@@ -359,9 +383,9 @@ export default function ManageMembers() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="vip">VIP</SelectItem>
+                      <SelectItem key="basic" value="basic">Basic</SelectItem>
+                      <SelectItem key="premium" value="premium">Premium</SelectItem>
+                      <SelectItem key="vip" value="vip">VIP</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -378,9 +402,9 @@ export default function ManageMembers() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
+                      <SelectItem key="active" value="active">Active</SelectItem>
+                      <SelectItem key="inactive" value="inactive">Inactive</SelectItem>
+                      <SelectItem key="expired" value="expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -397,18 +421,20 @@ export default function ManageMembers() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="weight_loss">Weight Loss</SelectItem>
-                      <SelectItem value="muscle_gain">Muscle Gain</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="endurance">Endurance</SelectItem>
+                      <SelectItem key="weight_loss" value="weight_loss">Weight Loss</SelectItem>
+                      <SelectItem key="muscle_gain" value="muscle_gain">Muscle Gain</SelectItem>
+                      <SelectItem key="maintenance" value="maintenance">Maintenance</SelectItem>
+                      <SelectItem key="endurance" value="endurance">Endurance</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label>Assign Trainer</Label>
+
+
                   <Select
-                    value={formData.assigned_trainer_id}
+                    value={String(formData.assigned_trainer_id ?? "none")}
                     onValueChange={(value) =>
                       setFormData({
                         ...formData,
@@ -419,10 +445,17 @@ export default function ManageMembers() {
                     <SelectTrigger>
                       <SelectValue placeholder="Select trainer" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem value="none">No Trainer</SelectItem>
-                      {TRAINERS.map((trainer) => (
-                        <SelectItem key={trainer.id} value={trainer.id}>
+                      <SelectItem key="none" value="none">
+                        No Trainer
+                      </SelectItem>
+
+                      {trainers.map((trainer) => (
+                        <SelectItem
+                          key={trainer.id}
+                          value={String(trainer.id)}
+                        >
                           {trainer.full_name}
                         </SelectItem>
                       ))}

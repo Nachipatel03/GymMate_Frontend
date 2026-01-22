@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo,useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
@@ -33,41 +33,11 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-/* -------------------------------------------------------------------------- */
-/*                               STATIC DATA                                  */
-/*                   TODO: Replace with API later                              */
-/* -------------------------------------------------------------------------- */
 
-const INITIAL_TRAINERS = [
-  {
-    id: 1,
-    full_name: "John Carter",
-    email: "john@gym.com",
-    phone: "9876543210",
-    specialization: "strength",
-    experience_years: 6,
-    bio: "Certified strength and conditioning coach.",
-    status: "active",
-    created_date: "2025-01-10",
-  },
-  {
-    id: 2,
-    full_name: "Alex Morgan",
-    email: "alex@gym.com",
-    phone: "9123456789",
-    specialization: "yoga",
-    experience_years: 4,
-    bio: "Yoga and flexibility expert.",
-    status: "inactive",
-    created_date: "2025-02-15",
-  },
-];
+import axios from "axios";
+import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
-const INITIAL_MEMBERS = [
-  { id: 1, assigned_trainer_id: 1 },
-  { id: 2, assigned_trainer_id: 1 },
-  { id: 3, assigned_trainer_id: 2 },
-];
+const INITIAL_MEMBERS = [ { id: 1, assigned_trainer_id: 1 }, { id: 2, assigned_trainer_id: 1 }, { id: 3, assigned_trainer_id: 2 }, ];
 
 /* -------------------------------------------------------------------------- */
 /*                                COMPONENT                                   */
@@ -76,8 +46,35 @@ const INITIAL_MEMBERS = [
 export default function ManageTrainers() {
   /* ------------------------------ STATE ----------------------------------- */
 
-  const [trainers, setTrainers] = useState(INITIAL_TRAINERS);
-  // TODO: Replace with API data
+  const [trainers, setTrainers] = useState([]);
+
+
+  const fetchTrainers = async () => {
+    try {
+      const res = await axios.get(
+        apiRoutes.baseUrl + apiRoutes.Admin +
+        apiRoutes.Trainers,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
+
+      setTrainers(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch trainers");
+    }
+  };
+
+  useEffect(() => {
+    fetchTrainers();
+  }, []);
 
   const [members] = useState(INITIAL_MEMBERS);
   // TODO: Replace with API data
@@ -119,7 +116,7 @@ export default function ManageTrainers() {
 
   /* ------------------------------ CRUD ------------------------------------- */
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const payload = {
@@ -129,28 +126,29 @@ export default function ManageTrainers() {
         : null,
     };
 
-    if (editingTrainer) {
-      // TODO: UPDATE TRAINER API
-      setTrainers((prev) =>
-        prev.map((t) =>
-          t.id === editingTrainer.id ? { ...t, ...payload } : t
-        )
-      );
-      toast.success("Trainer updated");
-    } else {
-      // TODO: CREATE TRAINER API
-      setTrainers((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          ...payload,
-          created_date: new Date().toISOString(),
-        },
-      ]);
-      toast.success("Trainer added");
-    }
+    try {
+      if (editingTrainer) {
+        // UPDATE later
+      } else {
+        await axios.post(
+          apiRoutes.baseUrl +apiRoutes.Admin+
+          apiRoutes.Trainers,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
 
-    resetForm();
+        toast.success("Trainer added");
+        fetchTrainers();
+        resetForm();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save trainer");
+    }
   };
 
   const handleEdit = (trainer) => {
@@ -205,7 +203,7 @@ export default function ManageTrainers() {
           </div>
           <div>
             <p className="font-medium text-white">{row.full_name}</p>
-            <p className="text-xs text-slate-400">{row.email}</p>
+            <p className="text-xs text-slate-400">{row.trainer_email}</p>
           </div>
         </div>
       ),
