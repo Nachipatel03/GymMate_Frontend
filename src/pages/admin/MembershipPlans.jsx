@@ -280,7 +280,7 @@ export default function MembershipPlans() {
                           size="icon"
                           onClick={() => handleEdit(plan)}
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-4 h-4 text-white " />
                         </Button>
                         <Button
                           variant="ghost"

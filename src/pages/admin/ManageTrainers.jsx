@@ -1,4 +1,4 @@
-import React, { useState, useMemo,useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
-const INITIAL_MEMBERS = [ { id: 1, assigned_trainer_id: 1 }, { id: 2, assigned_trainer_id: 1 }, { id: 3, assigned_trainer_id: 2 }, ];
+const INITIAL_MEMBERS = [{ id: 1, assigned_trainer_id: 1 }, { id: 2, assigned_trainer_id: 1 }, { id: 3, assigned_trainer_id: 2 },];
 
 /* -------------------------------------------------------------------------- */
 /*                                COMPONENT                                   */
@@ -131,7 +131,7 @@ export default function ManageTrainers() {
         // UPDATE later
       } else {
         await axios.post(
-          apiRoutes.baseUrl +apiRoutes.Admin+
+          apiRoutes.baseUrl + apiRoutes.Admin +
           apiRoutes.Trainers,
           payload,
           {
@@ -176,14 +176,18 @@ export default function ManageTrainers() {
   /* ------------------------------ FILTER ----------------------------------- */
 
   const filteredTrainers = useMemo(() => {
+    const query = (searchQuery ?? "").toLowerCase();
+
     return trainers.filter((trainer) => {
+      const fullName = (trainer?.full_name ?? "").toLowerCase();
+      const email = (trainer?.email ?? "").toLowerCase();
+
       const matchesSearch =
-        trainer.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        trainer.email.toLowerCase().includes(searchQuery.toLowerCase());
+        fullName.includes(query) || email.includes(query);
 
       const matchesSpec =
         filterSpecialization === "all" ||
-        trainer.specialization === filterSpecialization;
+        trainer?.specialization === filterSpecialization;
 
       return matchesSearch && matchesSpec;
     });
@@ -230,9 +234,10 @@ export default function ManageTrainers() {
     },
     {
       header: "Assigned Members",
+      accessor: "assigned_members_count",
       render: (row) => (
         <span className="text-white font-medium">
-          {getAssignedMembersCount(row.id)}
+          {row.assigned_members_count ?? 0}
         </span>
       ),
     },
@@ -317,8 +322,11 @@ export default function ManageTrainers() {
         </GlassCard>
 
         {/* Table */}
-        <GlassCard>
-          <DataTable columns={columns} data={filteredTrainers} />
+
+        <GlassCard className="p-0">
+          <div className="relative max-h-[420px] overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <DataTable columns={columns} data={filteredTrainers} />
+          </div>
         </GlassCard>
 
         {/* Modal */}

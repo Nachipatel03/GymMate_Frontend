@@ -51,6 +51,11 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // 🔥 Clear old tokens
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+
     if (!form.email || !form.email.includes("@")) {
       toast.error("Please enter a valid email");
       return;
@@ -72,7 +77,12 @@ export default function Login() {
       if (user) localStorage.setItem("user", JSON.stringify(user));
 
       toast.success("Login successful");
-      navigate("/");
+
+      if (user?.role) {
+        navigate(ROLE_REDIRECT[user.role] || "/");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       const msg =
         err?.response?.data?.error ||

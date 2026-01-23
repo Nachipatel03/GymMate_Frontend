@@ -36,20 +36,13 @@ import axios from "axios";
 import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
 
-
-
-
-
-
-/* -------------------------------------------------------------------------- */
-/*                                COMPONENT                                   */
-/* -------------------------------------------------------------------------- */
-
 export default function ManageMembers() {
+
   /* ------------------------------ STATE ----------------------------------- */
 
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
+  const [plans, setPlans] = useState([]);
 
   const fetchMembers = async () => {
     try {
@@ -104,18 +97,45 @@ export default function ManageMembers() {
   }, []);
 
 
+  const fetchPlans = async () => {
+    try {
+      const resget = await axios.get(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin +
+        apiRoutes.Plans,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      console.log("API response:", resget.data);
+      setPlans(resget.data);
+
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch plans");
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const isEditMode = Boolean(editingMember);
 
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     phone: "",
-    membership_plan: "basic",
+    membership_plan_id: "none",
     status: "active",
     goal: "maintenance",
     height: "",
@@ -161,11 +181,19 @@ export default function ManageMembers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.membership_plan_id || formData.membership_plan_id === "none") {
+      toast.error("Please select a membership plan");
+      return;
+    }
+
     const payload = {
-      ...formData,
-      email: formData.email.toLowerCase(),
+      full_name: formData.full_name,
+      phone: formData.phone,
+      status: formData.status,
+      goal: formData.goal,
       height: formData.height ? Number(formData.height) : null,
       weight: formData.weight ? Number(formData.weight) : null,
+      assigned_membership: formData.membership_plan_id,
       assigned_trainer:
         formData.assigned_trainer_id === "none"
           ? null
@@ -173,9 +201,78 @@ export default function ManageMembers() {
     };
 
     try {
-      await axios.post(
-        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
-        payload,
+      if (editingMember) {
+        // ✅ UPDATE
+        await axios.patch(
+          apiRoutes.baseUrl +
+          apiRoutes.Admin +
+          apiRoutes.MemberDetail(editingMember.id),
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+
+        toast.success("Member updated successfully");
+      } else {
+        // ✅ CREATE
+        await axios.post(
+          apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
+          {
+            ...payload,
+            email: formData.email.toLowerCase(), // only for create
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+
+        toast.success("Member created successfully");
+      }
+
+      fetchMembers();
+      resetForm();
+    } catch (error) {
+      console.error(error);
+      toast.error("Operation failed");
+    }
+  };
+
+  const handleEdit = (member) => {
+    setEditingMember(member);
+
+    setFormData({
+      full_name: member.full_name,
+      email: member.email,
+      phone: member.phone || "",
+
+      // ✅ DIRECT UUID mapping
+      membership_plan_id: member.membership_plan_id ?? "none",
+      assigned_trainer_id: member.assigned_trainer_id ?? "none",
+
+      status: member.status,
+      goal: member.goal,
+
+      height: member.height || "",
+      weight: member.weight || "",
+    });
+
+    setIsModalOpen(true);
+  };
+
+
+  const handleDelete = async (member) => {
+    if (!confirm(`Delete ${member.full_name}?`)) return;
+
+    try {
+      await axios.delete(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin +
+        apiRoutes.MemberDetail(member.id),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -183,31 +280,14 @@ export default function ManageMembers() {
         }
       );
 
-      toast.success("Member created");
+      toast.success("Member deleted");
       fetchMembers();
-      resetForm();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to create member");
+      toast.error("Failed to delete member");
     }
   };
 
-  const handleEdit = (member) => {
-    setEditingMember(member);
-    setFormData({
-      ...member,
-      assigned_trainer_id: member.assigned_trainer_id || "none",
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (member) => {
-    if (confirm(`Delete ${member.full_name}?`)) {
-      // TODO: DELETE MEMBER API
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
-      toast.success("Member deleted");
-    }
-  };
 
   /* --------------------------- TABLE COLUMNS ------------------------------- */
 
@@ -231,7 +311,7 @@ export default function ManageMembers() {
     { header: "Phone", accessor: "phone" },
     {
       header: "Plan",
-      render: (row) => <StatusBadge status={row.membership_plan} />,
+      render: (row) => <StatusBadge status={row.membership_plan_name} />,
     },
     {
       header: "Status",
@@ -318,9 +398,10 @@ export default function ManageMembers() {
           </Select>
         </GlassCard>
 
-        {/* Table */}
-        <GlassCard>
-          <DataTable columns={columns} data={filteredMembers} />
+        <GlassCard className="p-0">
+          <div className="relative max-h-[1000px] overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <DataTable columns={columns} data={filteredMembers} />
+          </div>
         </GlassCard>
 
         {/* Modal */}
@@ -342,6 +423,7 @@ export default function ManageMembers() {
                   <Label>Full Name</Label>
                   <Input
                     value={formData.full_name}
+                    disabled={isEditMode}
                     onChange={(e) =>
                       setFormData({ ...formData, full_name: e.target.value })
                     }
@@ -354,6 +436,7 @@ export default function ManageMembers() {
                   <Input
                     type="email"
                     value={formData.email}
+                    disabled={isEditMode}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
@@ -365,6 +448,7 @@ export default function ManageMembers() {
                   <Label>Phone</Label>
                   <Input
                     value={formData.phone}
+                    disabled={isEditMode}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
                     }
@@ -372,20 +456,34 @@ export default function ManageMembers() {
                 </div>
 
                 <div>
-                  <Label>Membership Plan</Label>
+                  <Label>Membership Plans</Label>
+
                   <Select
-                    value={formData.membership_plan}
+                    value={String(formData.membership_plan_id ?? "none")}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, membership_plan: value })
+                      setFormData({
+                        ...formData,
+                        membership_plan_id: value === "none" ? null : value,
+                      })
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select Plan" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      <SelectItem key="basic" value="basic">Basic</SelectItem>
-                      <SelectItem key="premium" value="premium">Premium</SelectItem>
-                      <SelectItem key="vip" value="vip">VIP</SelectItem>
+                      <SelectItem value="none">
+                        No Plan
+                      </SelectItem>
+
+                      {plans.map((plan) => (
+                        <SelectItem
+                          key={plan.id}
+                          value={String(plan.id)}
+                        >
+                          {plan.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -468,6 +566,7 @@ export default function ManageMembers() {
                   <Input
                     type="number"
                     value={formData.height}
+                    disabled={isEditMode}
                     onChange={(e) =>
                       setFormData({ ...formData, height: e.target.value })
                     }
@@ -479,6 +578,7 @@ export default function ManageMembers() {
                   <Input
                     type="number"
                     value={formData.weight}
+                    disabled={isEditMode}
                     onChange={(e) =>
                       setFormData({ ...formData, weight: e.target.value })
                     }

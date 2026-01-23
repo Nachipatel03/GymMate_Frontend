@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/ui/StatCard";
 import GlassCard from "@/components/ui/GlassCard";
@@ -18,15 +18,20 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-/* ================= DUMMY DATA ================= */
 
-const members = [
-  { id: 1, full_name: "John Smith", email: "john@email.com", phone: "+1 234 567", membership_plan: "premium", status: "active", created_date: new Date() },
-  { id: 2, full_name: "Sarah Wilson", email: "sarah@email.com", phone: "+1 345 678", membership_plan: "vip", status: "active", created_date: new Date() },
-  { id: 3, full_name: "Mike Johnson", email: "mike@email.com", phone: "+1 456 789", membership_plan: "basic", status: "inactive", created_date: new Date() },
-];
+import axios from "axios";
+import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
+import axiosInstance from "@/api/axiosInstance";
+import axiosInterceptor from "@/api/axiosInterceptor";
+// /* ================= DUMMY DATA ================= */
 
-const trainers = [{ id: 1 }, { id: 2 }, { id: 3 }];
+// const members = [
+//   { id: 1, full_name: "John Smith", email: "john@email.com", phone: "+1 234 567", membership_plan: "premium", status: "active", created_date: new Date() },
+//   { id: 2, full_name: "Sarah Wilson", email: "sarah@email.com", phone: "+1 345 678", membership_plan: "vip", status: "active", created_date: new Date() },
+//   { id: 3, full_name: "Mike Johnson", email: "mike@email.com", phone: "+1 456 789", membership_plan: "basic", status: "inactive", created_date: new Date() },
+// ];
+
+// const trainers = [{ id: 1 }, { id: 2 }, { id: 3 }];
 
 const payments = [
   { amount: 12000, status: "completed" },
@@ -59,12 +64,70 @@ const membershipDistribution = [
   { name: "VIP", value: 20, color: "#f59e0b" },
 ];
 
+
+
+
+
+
 /* ================= DASHBOARD ================= */
 
 export default function AdminDashboard() {
+
+
+
+  const [members, setMembers] = useState([]);
+  const [trainers, setTrainers] = useState([]);
+  // const [payments, setPayments] = useState([]);
+  // const [dashboardStats, setDashboardStats] = useState(null);
+
+
   const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
   const presentToday = 48;
   const absentToday = members.length - presentToday;
+
+
+
+
+  const fetchMembers = async () => {
+    try {
+      const res = await axiosInterceptor.get(
+        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      setMembers(res.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch members");
+    }
+  };
+
+
+  const fetchTrainers = async () => {
+    const res = await axiosInterceptor.get(
+      apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Trainers,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+
+    setTrainers(res.data);
+  };
+
+
+  useEffect(() => {
+    fetchMembers();
+    fetchTrainers();
+  }, []);
+
+
+
 
   const memberColumns = [
     {
@@ -88,7 +151,7 @@ export default function AdminDashboard() {
     {
       header: "Plan",
       accessor: "membership_plan",
-      render: (row) => <StatusBadge status={row.membership_plan} />,
+      render: (row) => <StatusBadge status={row.membership_plan_name} />,
     },
     {
       header: "Status",
@@ -97,13 +160,25 @@ export default function AdminDashboard() {
     },
     {
       header: "Joined",
-      accessor: "created_date",
-      render: (row) => (
-        <span className="text-slate-400">
-          {format(new Date(row.created_date), "MMM d, yyyy")}
-        </span>
-      ),
-    },
+      accessor: "created_at",
+      render: (row) => {
+        if (!row.created_at) {
+          return <span className="text-slate-500">—</span>;
+        }
+
+        const date = new Date(row.created_at);
+
+        if (isNaN(date.getTime())) {
+          return <span className="text-slate-500">—</span>;
+        }
+
+        return (
+          <span className="text-slate-400">
+            {format(date, "MMM d, yyyy")}
+          </span>
+        );
+      },
+    }
   ];
 
   return (
@@ -133,8 +208,13 @@ export default function AdminDashboard() {
 
         {/* TABLE + DONUT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <GlassCard className="lg:col-span-2">
-            <DataTable columns={memberColumns} data={members} />
+          <GlassCard className="lg:col-span-2 p-0">
+            <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
+              <DataTable
+                columns={memberColumns}
+                data={members.slice(0, 10)} // optional safety
+              />
+            </div>
           </GlassCard>
 
           <GlassCard className="p-6">
