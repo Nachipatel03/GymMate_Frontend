@@ -85,7 +85,8 @@ export default function ManageTrainers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSpecialization, setFilterSpecialization] = useState("all");
 
-  const [formData, setFormData] = useState({
+
+  const initialTrainerForm = {
     full_name: "",
     email: "",
     phone: "",
@@ -93,7 +94,10 @@ export default function ManageTrainers() {
     experience_years: "",
     bio: "",
     status: "active",
-  });
+  };
+
+
+  const [formData, setFormData] = useState(initialTrainerForm);
 
   /* ------------------------------ HELPERS ---------------------------------- */
 
@@ -128,10 +132,24 @@ export default function ManageTrainers() {
 
     try {
       if (editingTrainer) {
-        // UPDATE later
+        // ✅ UPDATE
+        await axios.patch(
+          apiRoutes.baseUrl +
+          apiRoutes.Admin +
+          apiRoutes.TrainerDetail(editingTrainer.id),
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+
+        toast.success("Trainer updated successfully");
       } else {
         await axios.post(
-          apiRoutes.baseUrl + apiRoutes.Admin +
+          apiRoutes.baseUrl +
+          apiRoutes.Admin +
           apiRoutes.Trainers,
           payload,
           {
@@ -141,21 +159,23 @@ export default function ManageTrainers() {
           }
         );
 
-        toast.success("Trainer added");
-        fetchTrainers();
-        resetForm();
+        toast.success("Trainer added successfully");
       }
+
+      fetchTrainers();
+      resetForm();
     } catch (error) {
       console.error(error);
       toast.error("Failed to save trainer");
     }
   };
 
+
   const handleEdit = (trainer) => {
     setEditingTrainer(trainer);
     setFormData({
       full_name: trainer.full_name || "",
-      email: trainer.email || "",
+      email: trainer.trainer_email || "",
       phone: trainer.phone || "",
       specialization: trainer.specialization || "general",
       experience_years: trainer.experience_years || "",
@@ -165,14 +185,28 @@ export default function ManageTrainers() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (trainer) => {
-    if (confirm(`Remove ${trainer.full_name}?`)) {
-      // TODO: DELETE TRAINER API
-      setTrainers((prev) => prev.filter((t) => t.id !== trainer.id));
-      toast.success("Trainer removed");
+  const handleDelete = async (trainer) => {
+    if (!confirm(`Remove ${trainer.full_name}?`)) return;
+
+    try {
+      await axios.delete(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin +
+        apiRoutes.TrainerDetail(trainer.id),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
+
+      toast.success("Trainer deleted");
+      fetchTrainers();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete trainer");
     }
   };
-
   /* ------------------------------ FILTER ----------------------------------- */
 
   const filteredTrainers = useMemo(() => {
@@ -283,7 +317,11 @@ export default function ManageTrainers() {
           <Button
             type="button"
             variant="primary"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingTrainer(null);
+              setFormData(initialTrainerForm);
+              setIsModalOpen(true);
+            }}
           >
             <UserCog className="w-4 h-4 mr-2" />
             Add Trainer
@@ -359,11 +397,12 @@ export default function ManageTrainers() {
                   <Input
                     type="email"
                     value={formData.email}
+                    disabled={Boolean(editingTrainer)}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    required
                   />
+
                 </div>
 
                 <div>

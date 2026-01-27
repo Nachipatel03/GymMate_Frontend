@@ -8,6 +8,7 @@ const apiRoutes = {
   Login :"login/",
   Plans:"membership-plans/",
   Trainers: "byadmintrainers/",
+  TrainerDetail: (id) => `trainers/${id}/`, 
 };
 
 export default apiRoutes;

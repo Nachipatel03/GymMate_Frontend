@@ -1,3 +1,4 @@
+import { Toaster } from "sonner";
 import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
@@ -6,6 +7,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toastSuccess, toastError } from "@/utils/toastMessages";
 import {
   Select,
   SelectContent,
@@ -43,6 +45,7 @@ export default function ManageMembers() {
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [plans, setPlans] = useState([]);
+
 
   const fetchMembers = async () => {
     try {
@@ -129,6 +132,8 @@ export default function ManageMembers() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [deleteMember, setDeleteMember] = useState(null);
+
   const isEditMode = Boolean(editingMember);
 
   const [formData, setFormData] = useState({
@@ -215,7 +220,7 @@ export default function ManageMembers() {
           }
         );
 
-        toast.success("Member updated successfully");
+        toastSuccess.updated("Member");
       } else {
         // ✅ CREATE
         await axios.post(
@@ -231,7 +236,7 @@ export default function ManageMembers() {
           }
         );
 
-        toast.success("Member created successfully");
+        toastSuccess.created("Member");
       }
 
       fetchMembers();
@@ -265,14 +270,18 @@ export default function ManageMembers() {
   };
 
 
-  const handleDelete = async (member) => {
-    if (!confirm(`Delete ${member.full_name}?`)) return;
+  const handleDeleteClick = (member) => {
+    setDeleteMember(member);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteMember) return;
 
     try {
       await axios.delete(
         apiRoutes.baseUrl +
         apiRoutes.Admin +
-        apiRoutes.MemberDetail(member.id),
+        apiRoutes.MemberDetail(deleteMember.id),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -280,11 +289,12 @@ export default function ManageMembers() {
         }
       );
 
-      toast.success("Member deleted");
+      toastSuccess.deleted("Member");
       fetchMembers();
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete member");
+      toastError.delete("Member");
+    } finally {
+      setDeleteMember(null);
     }
   };
 
@@ -333,6 +343,14 @@ export default function ManageMembers() {
           : "-",
     },
     {
+      header: "Assign Trainer",
+      render: (row) => (
+        <span className="capitalize text-slate-400">
+          {row.assigned_trainer_name.replace("_", " ")}
+        </span>
+      ),
+    },
+    {
       header: "Actions",
       render: (row) => (
         <div className="flex gap-2">
@@ -342,7 +360,7 @@ export default function ManageMembers() {
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => handleDelete(row)}
+            onClick={() => handleDeleteClick(row)}
           >
             <Trash2 className="w-4 h-4 text-rose-400" />
           </Button>
@@ -366,7 +384,21 @@ export default function ManageMembers() {
           <Button
             type="button"
             variant="primary"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingMember(null);
+              setFormData({
+                full_name: "",
+                email: "",
+                phone: "",
+                membership_plan_id: "none",
+                status: "active",
+                goal: "maintenance",
+                height: "",
+                weight: "",
+                assigned_trainer_id: "none",
+              });
+              setIsModalOpen(true);
+            }}
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Add Member
@@ -415,6 +447,7 @@ export default function ManageMembers() {
                 Enter gym member details below
               </DialogDescription>
             </DialogHeader>
+
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -597,6 +630,31 @@ export default function ManageMembers() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!deleteMember} onOpenChange={() => setDeleteMember(null)}>
+          <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Member</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-white">
+                  {deleteMember?.full_name}
+                </span>
+                ? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteMember(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
 
       </div>
     </DashboardLayout>
