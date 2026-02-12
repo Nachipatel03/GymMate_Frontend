@@ -20,6 +20,7 @@ export default function DashboardLayout({
         position="top-right"
         expand
         closeButton
+        duration={2000}  
       />
 
       <div className="min-h-screen bg-slate-950 flex">

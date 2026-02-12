@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastSuccess, toastError } from "@/utils/toastMessages";
+import { isEmailValid, isPhoneValid } from "@/utils/validators";
 import {
   Select,
   SelectContent,
@@ -45,6 +46,46 @@ export default function ManageMembers() {
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [plans, setPlans] = useState([]);
+
+  const validateMemberForm = () => {
+    if (!formData.full_name || formData.full_name.trim().length < 3) {
+      toastError.validation("Full name must be at least 3 characters");
+      return false;
+    }
+
+    if (!editingMember && !formData.email) {
+      toastError.validation("Email is required");
+      return false;
+    }
+
+    if (!editingMember && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toastError.validation("Enter a valid email address");
+      return false;
+    }
+
+    if (formData.phone && !/^[0-9]{10,15}$/.test(formData.phone)) {
+      toastError.validation("Phone must be 10–15 digits");
+      return false;
+    }
+
+    if (!formData.membership_plan_id || formData.membership_plan_id === "none") {
+      toastError.validation("Please select a membership plan");
+      return false;
+    }
+
+    if (formData.height && Number(formData.height) <= 0) {
+      toastError.validation("Height must be a positive number");
+      return false;
+    }
+
+    if (formData.weight && Number(formData.weight) <= 0) {
+      toastError.validation("Weight must be a positive number");
+      return false;
+    }
+
+    return true;
+  };
+
 
 
   const fetchMembers = async () => {
@@ -186,10 +227,8 @@ export default function ManageMembers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.membership_plan_id || formData.membership_plan_id === "none") {
-      toast.error("Please select a membership plan");
-      return;
-    }
+    if (!validateMemberForm()) return;
+
 
     const payload = {
       full_name: formData.full_name,
@@ -242,7 +281,14 @@ export default function ManageMembers() {
       fetchMembers();
       resetForm();
     } catch (error) {
-      console.error(error);
+      if (error.response?.status === 400) {
+        const errors = error.response.data;
+
+        if (errors.email) {
+          toastError.validation(errors.email[0]);
+          return;
+        }
+      }
       toast.error("Operation failed");
     }
   };
@@ -346,7 +392,9 @@ export default function ManageMembers() {
       header: "Assign Trainer",
       render: (row) => (
         <span className="capitalize text-slate-400">
-          {row.assigned_trainer_name.replace("_", " ")}
+          {row.assigned_trainer_name
+            ? row.assigned_trainer_name.replace("_", " ")
+            : "—"}
         </span>
       ),
     },

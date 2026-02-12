@@ -31,7 +31,7 @@ import {
   Award,
 } from "lucide-react";
 import { format } from "date-fns";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/utils/toastMessages";
 
 
 import axios from "axios";
@@ -48,6 +48,75 @@ export default function ManageTrainers() {
 
   const [trainers, setTrainers] = useState([]);
 
+
+  const validateTrainerForm = () => {
+    // Full name
+    if (!formData.full_name.trim()) {
+      toastError.validation("Full name is required");
+      return false;
+    }
+
+    if (formData.full_name.length < 3) {
+      toastError.validation("Full name must be at least 3 characters");
+      return false;
+    }
+
+    // Email (only on CREATE)
+    if (!editingTrainer) {
+      if (!formData.email.trim()) {
+        toastError.validation("Email is required");
+        return false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toastError.validation("Enter a valid email address");
+        return false;
+      }
+    }
+
+    // Phone
+    if (formData.phone) {
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(formData.phone)) {
+        toastError.validation("Enter a valid 10-digit phone number");
+        return false;
+      }
+    }
+
+    // Experience
+    if (
+      formData.experience_years === "" ||
+      formData.experience_years === null ||
+      formData.experience_years === undefined
+    ) {
+      toastError.validation("Experience is required");
+      return false;
+    }
+
+    const exp = Number(formData.experience_years);
+
+    // NUMBER CHECK
+    if (isNaN(exp)) {
+      toastError.validation("Experience must be a number");
+      return false;
+    }
+
+    // RANGE CHECK
+    if (exp < 0 || exp > 50) {
+      toastError.validation("Experience must be between 0 and 50 years");
+      return false;
+    }
+
+
+    // Bio length
+    if (formData.bio && formData.bio.length > 500) {
+      toastError.validation("Bio cannot exceed 500 characters");
+      return false;
+    }
+
+    return true; // ✅ all good
+  };
 
   const fetchTrainers = async () => {
     try {
@@ -68,7 +137,7 @@ export default function ManageTrainers() {
       setTrainers(data);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch trainers");
+      toastError.fetch("trainers");
     }
   };
 
@@ -81,7 +150,7 @@ export default function ManageTrainers() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTrainer, setEditingTrainer] = useState(null);
-
+  const [deleteTrainer, setDeleteTrainer] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSpecialization, setFilterSpecialization] = useState("all");
 
@@ -122,13 +191,14 @@ export default function ManageTrainers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateTrainerForm()) return;
+    const payload = { ...formData };
 
-    const payload = {
-      ...formData,
-      experience_years: formData.experience_years
-        ? Number(formData.experience_years)
-        : null,
-    };
+    if (formData.experience_years !== "") {
+      payload.experience_years = Number(formData.experience_years);
+    } else {
+      delete payload.experience_years;
+    }
 
     try {
       if (editingTrainer) {
@@ -145,7 +215,7 @@ export default function ManageTrainers() {
           }
         );
 
-        toast.success("Trainer updated successfully");
+        toastSuccess.updated("Trainer");
       } else {
         await axios.post(
           apiRoutes.baseUrl +
@@ -159,14 +229,27 @@ export default function ManageTrainers() {
           }
         );
 
-        toast.success("Trainer added successfully");
+        toastSuccess.created("Trainer");
       }
 
       fetchTrainers();
       resetForm();
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to save trainer");
+      const data = error.response?.data;
+
+      if (data && typeof data === "object") {
+        const firstKey = Object.keys(data)[0];
+        const message = Array.isArray(data[firstKey])
+          ? data[firstKey][0]
+          : data[firstKey];
+
+        toastError.validation(message);
+        return;
+      }
+
+      editingTrainer
+        ? toastError.update("Trainer")
+        : toastError.create("Trainer");
     }
   };
 
@@ -185,14 +268,24 @@ export default function ManageTrainers() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (trainer) => {
-    if (!confirm(`Remove ${trainer.full_name}?`)) return;
+  const handleDeleteClick = (trainer) => {
+    if ((trainer.assigned_members_count ?? 0) > 0) {
+      toastError.forbidden(
+        "Trainer is assigned to members and cannot be deleted"
+      );
+      return;
+    }
+    setDeleteTrainer(trainer);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTrainer) return;
 
     try {
       await axios.delete(
         apiRoutes.baseUrl +
         apiRoutes.Admin +
-        apiRoutes.TrainerDetail(trainer.id),
+        apiRoutes.TrainerDetail(deleteTrainer.id),
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -200,11 +293,12 @@ export default function ManageTrainers() {
         }
       );
 
-      toast.success("Trainer deleted");
+      toastSuccess.deleted("Trainer");
       fetchTrainers();
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete trainer");
+      toastError.delete("Trainer");
+    } finally {
+      setDeleteTrainer(null);
     }
   };
   /* ------------------------------ FILTER ----------------------------------- */
@@ -293,7 +387,7 @@ export default function ManageTrainers() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => handleDelete(row)}
+            onClick={() => handleDeleteClick(row)}
           >
             <Trash2 className="w-4 h-4 text-rose-400" />
           </Button>
@@ -492,7 +586,38 @@ export default function ManageTrainers() {
             </form>
           </DialogContent>
         </Dialog>
+        <Dialog
+          open={!!deleteTrainer}
+          onOpenChange={() => setDeleteTrainer(null)}
+        >
+          <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Trainer</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-white">
+                  {deleteTrainer?.full_name}
+                </span>
+                ? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
 
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteTrainer(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

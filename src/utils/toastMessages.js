@@ -19,6 +19,8 @@ export const toastSuccess = {
 /* ------------------------ ERROR TOASTS ------------------------ */
 
 export const toastError = {
+   validation: (msg) => toast.error(msg),
+   
   fetch: (entity) =>
     toast.error(`Failed to load ${entity}`),
 
@@ -33,6 +35,7 @@ export const toastError = {
 
   custom: (message) =>
     toast.error(message),
+  forbidden: (message) => toast.error(message),
 };
 
 /* ----------------------- INFO / WARNING ----------------------- */

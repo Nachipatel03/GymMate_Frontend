@@ -30,7 +30,7 @@ import {
   Sparkles,
   Crown,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toastSuccess, toastError } from "@/utils/toastMessages";
 
 import axios from "axios";
 import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
@@ -82,6 +82,7 @@ export default function MembershipPlans() {
   const [plans, setPlans] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [deletePlan, setDeletePlan] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,6 +94,40 @@ export default function MembershipPlans() {
   });
 
 
+
+  const validatePlanForm = (data) => {
+    if (!data.name.trim()) {
+      toastError.validation("Plan name is required");
+      return false;
+    }
+
+    if (!data.type) {
+      toastError.validation("Plan type is required");
+      return false;
+    }
+
+    if (!data.duration_months || data.duration_months < 1) {
+      toastError.validation("Duration must be at least 1 month");
+      return false;
+    }
+
+    if (data.price === "" || isNaN(Number(data.price))) {
+      toastError.validation("Price must be a valid number");
+      return false;
+    }
+
+    if (Number(data.price) <= 0) {
+      toastError.validation("Price must be greater than 0");
+      return false;
+    }
+
+    if (!data.features.trim()) {
+      toastError.validation("Please add at least one feature");
+      return false;
+    }
+
+    return true;
+  };
 
   /* -------------------- GET -------------------- */
   const fetchPlans = async () => {
@@ -124,6 +159,7 @@ export default function MembershipPlans() {
   /* -------------------- POST -------------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validatePlanForm(formData)) return;
 
     const payload = {
       ...formData,
@@ -135,22 +171,43 @@ export default function MembershipPlans() {
     };
 
     try {
-      await axios.post(
-        apiRoutes.baseUrl +
-        apiRoutes.Admin + apiRoutes.Plans,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
-      );
+      if (editingPlan) {
+        // 🔄 UPDATE
+        await axios.put(
+          apiRoutes.baseUrl +
+          apiRoutes.Admin +
+          apiRoutes.PlansDetails(editingPlan.id),
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
 
-      toast.success("Plan created");
+        toastSuccess.updated("Plan");
+      } else {
+        // ➕ CREATE
+        await axios.post(
+          apiRoutes.baseUrl +
+          apiRoutes.Admin +
+          apiRoutes.Plans,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+
+        toastSuccess.created("Plan");
+      }
+
       fetchPlans();
       resetForm();
-    } catch {
-      toast.error("Failed to create plan");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save plan");
     }
   };
 
@@ -173,27 +230,65 @@ export default function MembershipPlans() {
 
   /* ------------------------------ CRUD ------------------------------------- */
 
-  const handleEdit = (plan) => {
-    setEditingPlan(plan);
-    setFormData({
-      name: plan.name,
-      type: plan.type,
-      duration_months: plan.duration_months,
-      price: plan.price,
-      features: plan.features.join("\n"),
-      is_active: plan.is_active,
-    });
-    setIsModalOpen(true);
+const handleEdit = (plan) => {
+  if ((plan.assigned_members_count ?? 0) > 0) {
+    toastError.forbidden(
+      "Plan is assigned to members and cannot be updated"
+    );
+    return;
+  }
+
+  setEditingPlan(plan);
+  setFormData({
+    name: plan.name,
+    type: plan.type,
+    duration_months: plan.duration_months,
+    price: plan.price,
+    features: plan.features.join("\n"),
+    is_active: plan.is_active,
+  });
+  setIsModalOpen(true);
+};
+
+
+
+
+  const handleDeleteClick = (plan) => {
+    setDeletePlan(plan);
+    if ((plan.assigned_members_count ?? 0) > 0) {
+      toastError.forbidden(
+        "Plan is assigned to members and cannot be deleted"
+      );
+      return;
+    }
   };
 
 
+  const confirmDelete = async () => {
+    if (!deletePlan) return;
 
+    try {
+      await axios.delete(
+        apiRoutes.baseUrl +
+        apiRoutes.Admin +
+        apiRoutes.PlansDetails(deletePlan.id),
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        }
+      );
 
-  const handleDelete = (plan) => {
-    if (confirm(`Delete ${plan.name}?`)) {
-      // TODO: DELETE PLAN API
-      setPlans((prev) => prev.filter((p) => p.id !== plan.id));
-      toast.success("Plan deleted");
+      toastSuccess.deleted("Plan");
+      fetchPlans();
+    } catch (error) {
+      const message =
+        error?.response?.data?.detail ||
+        "Failed to delete plan";
+
+      toastError.forbidden(message);
+    } finally {
+      setDeletePlan(null);
     }
   };
 
@@ -285,7 +380,7 @@ export default function MembershipPlans() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(plan)}
+                          onClick={() => handleDeleteClick(plan)}
                         >
                           <Trash2 className="w-4 h-4 text-rose-400" />
                         </Button>
@@ -403,6 +498,40 @@ export default function MembershipPlans() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={!!deletePlan}
+          onOpenChange={() => setDeletePlan(null)}
+        >
+          <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Plan</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-white">
+                  {deletePlan?.name}
+                </span>
+                ? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeletePlan(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
 
       </div>
     </DashboardLayout>

@@ -7,6 +7,7 @@ const apiRoutes = {
   MemberDetail: (id) => `members/${id}/`, 
   Login :"login/",
   Plans:"membership-plans/",
+  PlansDetails:(id) => `membership-plans/${id}/`, 
   Trainers: "byadmintrainers/",
   TrainerDetail: (id) => `trainers/${id}/`, 
 };
