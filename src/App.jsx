@@ -14,6 +14,11 @@ import MyDiet from "@/pages/member/MyDiet";
 import MyProgress from "@/pages/member/MyProgress";
 import AddProgress from "@/pages/member/AddProgress";
 import MyAttendance from "@/pages/member/MyAttendace";
+import TrainerDashboard from "./pages/trainer/TrainerDashboard";
+import AssignedMembers from "./pages/trainer/AssignedMembers";
+import WorkoutPlans from "./pages/trainer/WorkoutPlans";
+import DietPlans from "./pages/trainer/DietPlans";
+import TrainerAttendance from "./pages/trainer/TrainerAttendance";
 
 export default function App() {
   return (
@@ -33,6 +38,11 @@ export default function App() {
       <Route path="/myprogress" element={<MyProgress />} />
       <Route path="/member/add" element={<AddProgress />} />
       <Route path="/myattendance" element={<MyAttendance />} />
+      <Route path="/trainerdashboard" element={<TrainerDashboard/>} />
+      <Route path="/assignedmembers" element={<AssignedMembers/>} />
+      <Route path="/workoutplans" element={<WorkoutPlans/>} />
+      <Route path="/dietplans" element={<DietPlans/>} />
+      <Route path="/trainerattendance" element={<TrainerAttendance/>} />
       
     </Routes>
   );

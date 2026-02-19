@@ -9,7 +9,9 @@ const apiRoutes = {
   Plans:"membership-plans/",
   PlansDetails:(id) => `membership-plans/${id}/`, 
   Trainers: "byadmintrainers/",
-  TrainerDetail: (id) => `trainers/${id}/`, 
+  TrainerDetail: (id) => `trainers/${id}/`,
+  WorkoutPlans: "workout-plans/", 
+  
 };
 
 export default apiRoutes;

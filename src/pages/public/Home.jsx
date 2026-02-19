@@ -82,7 +82,7 @@ export default function Home() {
     }
 
     if (user.role === "ADMIN") navigate("/admindashboard");
-    else if (user.role === "TRAINER") navigate("/memberdashboard");
+    else if (user.role === "TRAINER") navigate("/trainerdashboard");
     else navigate("/memberdashboard");
   };
 

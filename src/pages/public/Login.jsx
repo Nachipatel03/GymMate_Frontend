@@ -18,7 +18,7 @@ import {
 
 const ROLE_REDIRECT = {
   admin: "/admindashboard",
-  trainer: "/trainer/dashboard",
+  trainer: "/trainerdashboard",
   member: "/memberdashboard",
 };
 
