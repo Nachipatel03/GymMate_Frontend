@@ -7,6 +7,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import AreaChartComponent from "@/components/charts/AreaChartComponent";
 import BarChartComponent from "@/components/charts/BarChartComponent";
 import DonutChart from "@/components/charts/DonutChart";
+import PageHeader from "@/components/ui/PageHeader";
 import {
   Users,
   UserCog,
@@ -16,120 +17,70 @@ import {
   TrendingUp,
   Calendar,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 
 import axios from "axios";
 import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
-import axiosInstance from "@/api/axiosInstance";
 import axiosInterceptor from "@/api/axiosInterceptor";
-// /* ================= DUMMY DATA ================= */
-
-// const members = [
-//   { id: 1, full_name: "John Smith", email: "john@email.com", phone: "+1 234 567", membership_plan: "premium", status: "active", created_date: new Date() },
-//   { id: 2, full_name: "Sarah Wilson", email: "sarah@email.com", phone: "+1 345 678", membership_plan: "vip", status: "active", created_date: new Date() },
-//   { id: 3, full_name: "Mike Johnson", email: "mike@email.com", phone: "+1 456 789", membership_plan: "basic", status: "inactive", created_date: new Date() },
-// ];
-
-// const trainers = [{ id: 1 }, { id: 2 }, { id: 3 }];
-
-const payments = [
-  { amount: 12000, status: "completed" },
-  { amount: 18000, status: "completed" },
-  { amount: 15500, status: "completed" },
-];
-
-const weeklyAttendanceData = [
-  { name: "Mon", present: 45, absent: 5 },
-  { name: "Tue", present: 52, absent: 8 },
-  { name: "Wed", present: 48, absent: 12 },
-  { name: "Thu", present: 55, absent: 5 },
-  { name: "Fri", present: 60, absent: 10 },
-  { name: "Sat", present: 38, absent: 22 },
-  { name: "Sun", present: 25, absent: 35 },
-];
-
-const revenueData = [
-  { name: "Jan", revenue: 12500 },
-  { name: "Feb", revenue: 15000 },
-  { name: "Mar", revenue: 18500 },
-  { name: "Apr", revenue: 16000 },
-  { name: "May", revenue: 21000 },
-  { name: "Jun", revenue: 19500 },
-];
-
-const membershipDistribution = [
-  { name: "Basic", value: 45, color: "#64748b" },
-  { name: "Premium", value: 35, color: "#8b5cf6" },
-  { name: "VIP", value: 20, color: "#f59e0b" },
-];
-
-
-
-
-
-
-/* ================= DASHBOARD ================= */
+/* ================= DYNAMIC DATA INTEGRATION ================= *//* ================= DASHBOARD ================= */
 
 export default function AdminDashboard() {
-
-
-
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
-  // const [payments, setPayments] = useState([]);
-  // const [dashboardStats, setDashboardStats] = useState(null);
+  const [revenueStats, setRevenueStats] = useState({ total_revenue: 0, trend: [] });
+  const [attendanceStats, setAttendanceStats] = useState({ present_members: 0, absent_members: 0 });
+  const [loading, setLoading] = useState(true);
 
-
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const presentToday = 48;
-  const absentToday = members.length - presentToday;
-
-
-
-
-  const fetchMembers = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const res = await axiosInterceptor.get(
-        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
-      );
+      setLoading(true);
+      const headers = { Authorization: `Bearer ${localStorage.getItem("access_token")}` };
 
-      setMembers(res.data);
+      const [membersRes, trainersRes, revenueRes, attendanceRes] = await Promise.all([
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members, { headers }),
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Trainers, { headers }),
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.RevenueStats, { headers }),
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.AdminAttendanceOverview, {
+          headers,
+          params: { date: format(new Date(), "yyyy-MM-dd") }
+        })
+      ]);
+
+      setMembers(membersRes.data);
+      setTrainers(trainersRes.data);
+      setRevenueStats(revenueRes.data);
+      setAttendanceStats(attendanceRes.data.stats || { present_members: 0, absent_members: 0 });
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch members");
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
     }
   };
 
-
-  const fetchTrainers = async () => {
-    const res = await axiosInterceptor.get(
-      apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Trainers,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      }
-    );
-
-    setTrainers(res.data);
-  };
-
-
   useEffect(() => {
-    fetchMembers();
-    fetchTrainers();
+    fetchDashboardData();
   }, []);
 
+  // Calculate dynamic membership distribution from actual members
+  const planCounts = {};
+  members.forEach(m => {
+    const planName = m.active_membership?.plan_name || 'No Plan';
+    planCounts[planName] = (planCounts[planName] || 0) + 1;
+  });
 
+  const colors = ["#64748b", "#8b5cf6", "#f59e0b", "#10b981", "#ef4444"];
+  const membershipDistribution = Object.keys(planCounts).map((key, idx) => ({
+    name: key,
+    value: planCounts[key],
+    color: colors[idx % colors.length]
+  }));
 
-
-  const memberColumns = [
+  // Dummy placeholder for week trend until full weekly API is built
+  const weeklyAttendanceTrend = [
+    { name: 'Today', present: attendanceStats.present_members || 0, absent: attendanceStats.absent_members || 0 }
+  ]; const memberColumns = [
     {
       header: "Member",
       accessor: "full_name",
@@ -150,8 +101,8 @@ export default function AdminDashboard() {
     { header: "Phone", accessor: "phone" },
     {
       header: "Plan",
-      accessor: "membership_plan",
-      render: (row) => <StatusBadge status={row.membership_plan_name} />,
+      accessor: "active_membership",
+      render: (row) => <StatusBadge status={row.active_membership?.plan_name || 'No Plan'} />,
     },
     {
       header: "Status",
@@ -160,13 +111,13 @@ export default function AdminDashboard() {
     },
     {
       header: "Joined",
-      accessor: "created_at",
+      accessor: "join_date",
       render: (row) => {
-        if (!row.created_at) {
+        if (!row.join_date) {
           return <span className="text-slate-500">—</span>;
         }
 
-        const date = new Date(row.created_at);
+        const date = parseISO(row.join_date);
 
         if (isNaN(date.getTime())) {
           return <span className="text-slate-500">—</span>;
@@ -184,25 +135,31 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout role="admin" currentPage="AdminDashboard" title="Admin Dashboard">
       <div className="space-y-6">
+        <PageHeader
+          title="Admin Overview"
+          subtitle="Real-time key metrics and statistics for your gym."
+        />
 
         {/* STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatCard title="Total Members" value={members.length} icon={Users} />
           <StatCard title="Total Trainers" value={trainers.length} icon={UserCog} />
-          <StatCard title="Monthly Revenue" value={`$${totalRevenue}`} icon={DollarSign} />
-          <StatCard title="Present Today" value={presentToday} icon={UserCheck} />
-          <StatCard title="Absent Today" value={absentToday} icon={UserX} />
+          <StatCard title="Total Revenue" value={`$${revenueStats.total_revenue || 0}`} icon={DollarSign} />
+          <StatCard title="Present Today" value={attendanceStats.present_members || 0} icon={UserCheck} />
+          <StatCard title="Absent Today" value={attendanceStats.absent_members || 0} icon={UserX} />
           <StatCard title="Active Plans" value={members.filter(m => m.status === "active").length} icon={Calendar} />
         </div>
 
         {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <GlassCard className="p-6">
-            <BarChartComponent data={weeklyAttendanceData} />
+            <h3 className="text-lg font-semibold text-white mb-4">Attendance Trend</h3>
+            <BarChartComponent data={weeklyAttendanceTrend} dataKey="present" secondaryDataKey="absent" />
           </GlassCard>
 
           <GlassCard className="p-6">
-            <AreaChartComponent data={revenueData} dataKey="revenue" />
+            <h3 className="text-lg font-semibold text-white mb-4">Revenue Overview</h3>
+            <AreaChartComponent data={revenueStats.trend || []} dataKey="revenue" />
           </GlassCard>
         </div>
 
@@ -218,7 +175,12 @@ export default function AdminDashboard() {
           </GlassCard>
 
           <GlassCard className="p-6">
-            <DonutChart data={membershipDistribution} />
+            <h3 className="text-lg font-semibold text-white mb-4">Membership Distribution</h3>
+            {membershipDistribution.length > 0 ? (
+              <DonutChart data={membershipDistribution} />
+            ) : (
+              <div className="text-sm text-slate-500 text-center py-10">No active plans found</div>
+            )}
           </GlassCard>
         </div>
       </div>

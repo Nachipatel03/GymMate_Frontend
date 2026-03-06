@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -403,24 +404,24 @@ export default function ManageTrainers() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Trainers</h2>
-            <p className="text-slate-400">Manage your gym trainers</p>
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              setEditingTrainer(null);
-              setFormData(initialTrainerForm);
-              setIsModalOpen(true);
-            }}
-          >
-            <UserCog className="w-4 h-4 mr-2" />
-            Add Trainer
-          </Button>
-        </div>
+        <PageHeader
+          title="Trainers"
+          subtitle="Manage your gym trainers"
+          action={
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setEditingTrainer(null);
+                setFormData(initialTrainerForm);
+                setIsModalOpen(true);
+              }}
+            >
+              <UserCog className="w-4 h-4 mr-2" />
+              Add Trainer
+            </Button>
+          }
+        />
 
         {/* Filters */}
         <GlassCard className="p-4 flex gap-4">

@@ -19,10 +19,33 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
+import axios from "axios";
 
 export default function Navbar({ onMenuClick, title = "Dashboard" }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await axios.get(
+          apiRoutes.baseUrl + apiRoutes.Auth + apiRoutes.NotificationUnreadCount,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          }
+        );
+        setUnreadCount(res.data.unread_count);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchUnread();
+  }, []);
 
   /* ================= LOAD USER ================= */
   useEffect(() => {
@@ -81,9 +104,18 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
         <div className="flex items-center gap-2">
 
           {/* NOTIFICATIONS */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative"
+            onClick={() => navigate('/notifications')}
+          >
             <Bell className="w-5 h-5 text-slate-400" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-violet-500 rounded-full" />
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 min-w-[16px] h-4 px-1 text-[10px] flex items-center justify-center bg-violet-500 text-white rounded-full">
+                {unreadCount}
+              </span>
+            )}
           </Button>
 
           {/* USER MENU */}
@@ -116,7 +148,7 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
               align="end"
               className="w-56 bg-slate-900 border border-slate-700 text-slate-300"
             >
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </DropdownMenuItem>

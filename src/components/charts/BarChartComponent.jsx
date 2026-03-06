@@ -17,14 +17,14 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-export default function BarChartComponent({ 
-  data, 
+export default function BarChartComponent({
+  data,
   dataKey,
   secondaryDataKey,
   xAxisKey = 'name',
   color = '#8b5cf6',
   secondaryColor = '#06b6d4',
-  height = 300 
+  height = 300
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -40,32 +40,37 @@ export default function BarChartComponent({
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-        <XAxis 
-          dataKey={xAxisKey} 
-          stroke="#64748b" 
+        <XAxis
+          dataKey={xAxisKey}
+          stroke="#64748b"
           fontSize={12}
           tickLine={false}
           axisLine={false}
         />
-        <YAxis 
-          stroke="#64748b" 
+        <YAxis
+          stroke="#64748b"
           fontSize={12}
           tickLine={false}
           axisLine={false}
         />
-        <Tooltip content={<CustomTooltip />} />
-        <Bar 
-          dataKey={dataKey} 
-          fill="url(#barGradient)" 
+        <Tooltip
+          content={<CustomTooltip />}
+          cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+        />
+        <Bar
+          dataKey={dataKey}
+          fill="url(#barGradient)"
           radius={[4, 4, 0, 0]}
-          name={dataKey}
+          name="Present"
+          barSize={30}
         />
         {secondaryDataKey && (
-          <Bar 
-            dataKey={secondaryDataKey} 
-            fill="url(#barGradient2)" 
+          <Bar
+            dataKey={secondaryDataKey}
+            fill="url(#barGradient2)"
             radius={[4, 4, 0, 0]}
-            name={secondaryDataKey}
+            name="Absent"
+            barSize={30}
           />
         )}
       </BarChart>

@@ -29,7 +29,8 @@ import {
     Dumbbell,
     Search,
     Calendar,
-    User
+    User,
+    Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -58,6 +59,8 @@ export default function WorkoutPlans() {
         name: '',
         member_id: '',
         description: '',
+        day: 'Monday',
+        end_time: '',
         status: 'active',
         exercises: [],
         start_date: '',
@@ -67,8 +70,7 @@ export default function WorkoutPlans() {
     const [newExercise, setNewExercise] = useState({
         name: '',
         sets: 3,
-        reps: 10,
-        day: 'Monday'
+        reps: 10
     });
 
     /* ---------------------------------------------------------------------- */
@@ -174,6 +176,8 @@ export default function WorkoutPlans() {
             name: plan.name,
             member_id: plan.member_id || '',
             description: plan.description,
+            day: plan.day || 'Monday',
+            end_time: plan.end_time || '',
             status: plan.status,
             exercises: plan.exercises || [],
             start_date: plan.start_date || '',
@@ -187,12 +191,14 @@ export default function WorkoutPlans() {
             name: '',
             member_id: '',
             description: '',
+            day: 'Monday',
+            end_time: '',
             status: 'active',
             exercises: [],
             start_date: '',
             end_date: ''
         });
-        setNewExercise({ name: '', sets: 3, reps: 10, day: 'Monday' });
+        setNewExercise({ name: '', sets: 3, reps: 10 });
         setEditingPlan(null);
         setIsModalOpen(false);
     };
@@ -210,10 +216,10 @@ export default function WorkoutPlans() {
 
         setFormData({
             ...formData,
-            exercises: [...formData.exercises, { ...newExercise }]
+            exercises: [...formData.exercises, { ...newExercise, day: formData.day }]
         });
 
-        setNewExercise({ name: '', sets: 3, reps: 10, day: 'Monday' });
+        setNewExercise({ name: '', sets: 3, reps: 10 });
     };
 
 
@@ -237,6 +243,8 @@ export default function WorkoutPlans() {
                 name: formData.name,
                 member_id: formData.member_id,
                 description: formData.description,
+                day: formData.day,
+                end_time: formData.end_time || null,
                 status: formData.status,
                 exercises: formData.exercises,
                 start_date: formData.start_date || null,
@@ -283,28 +291,28 @@ export default function WorkoutPlans() {
 
 
     const confirmDelete = async () => {
-    if (!deletePlan) return;
+        if (!deletePlan) return;
 
-    try {
-        await axios.delete(
-            `${apiRoutes.baseUrl}${apiRoutes.Admin}${apiRoutes.WorkoutPlans}${deletePlan.id}/`,
-            {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-                },
-            }
-        );
+        try {
+            await axios.delete(
+                `${apiRoutes.baseUrl}${apiRoutes.Admin}${apiRoutes.WorkoutPlans}${deletePlan.id}/`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+                    },
+                }
+            );
 
-        toast.success("Workout plan deleted");
-        fetchWorkoutPlans();
-        setIsDeleteOpen(false);
-        setDeletePlan(null);
+            toast.success("Workout plan deleted");
+            fetchWorkoutPlans();
+            setIsDeleteOpen(false);
+            setDeletePlan(null);
 
-    } catch (error) {
-        console.error(error);
-        toast.error("Failed to delete workout plan");
-    }
-};
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete workout plan");
+        }
+    };
 
 
     const filteredPlans = workoutPlans.filter(plan =>
@@ -365,6 +373,19 @@ export default function WorkoutPlans() {
 
                                     <h3 className="text-lg font-semibold text-white mb-2">{plan.name}</h3>
                                     <p className="text-sm text-slate-400 mb-4 line-clamp-2">{plan.description}</p>
+
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="w-4 h-4 text-slate-500" />
+                                            <span className="text-sm text-violet-400 font-medium">{plan.day}</span>
+                                        </div>
+                                        {plan.end_time && (
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="w-4 h-4 text-slate-500" />
+                                                <span className="text-sm text-slate-300">{plan.end_time}</span>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <div className="flex items-center gap-2 mb-4">
                                         <User className="w-4 h-4 text-slate-500" />
@@ -432,6 +453,9 @@ export default function WorkoutPlans() {
                             <DialogTitle>
                                 {editingPlan ? "Edit Workout Plan" : "Create Workout Plan"}
                             </DialogTitle>
+                            <DialogDescription>
+                                {editingPlan ? "Update the details of this workout plan." : "Create a new daily workout plan for a member."}
+                            </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -476,11 +500,37 @@ export default function WorkoutPlans() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <Label>Day</Label>
+                                    <Select
+                                        value={formData.day}
+                                        onValueChange={(value) => setFormData({ ...formData, day: value })}
+                                    >
+                                        <SelectTrigger className="bg-slate-800 border-slate-700 text-white mt-1">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-900 border-slate-700">
+                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                                <SelectItem key={day} value={day}>{day}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Label>End Time</Label>
+                                    <Input
+                                        type="time"
+                                        value={formData.end_time || ''}
+                                        onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                                        className="bg-slate-800 border-slate-700 text-white mt-1"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
                                     <Label>Start Date</Label>
                                     <Input
                                         type="date"
-
-
                                         value={formData.start_date || ''}
                                         onChange={(e) =>
                                             setFormData({ ...formData, start_date: e.target.value })
@@ -511,7 +561,7 @@ export default function WorkoutPlans() {
                                         <div key={idx} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
                                             <div>
                                                 <p className="text-sm font-medium text-white">{ex.name}</p>
-                                                <p className="text-xs text-slate-400">{ex.sets} sets × {ex.reps} reps • {ex.day}</p>
+                                                <p className="text-xs text-slate-400">{ex.sets} sets × {ex.reps} reps</p>
                                             </div>
                                             <Button
                                                 type="button"
@@ -533,7 +583,7 @@ export default function WorkoutPlans() {
                                         placeholder="Exercise name"
                                         className="bg-slate-700 border-slate-600 text-white"
                                     />
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="grid grid-cols-2 gap-2">
                                         <Input
                                             type="number"
                                             value={newExercise.sets}
@@ -548,19 +598,6 @@ export default function WorkoutPlans() {
                                             placeholder="Reps"
                                             className="bg-slate-700 border-slate-600 text-white"
                                         />
-                                        <Select
-                                            value={newExercise.day}
-                                            onValueChange={(value) => setNewExercise({ ...newExercise, day: value })}
-                                        >
-                                            <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-slate-700">
-                                                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                                                    <SelectItem key={day} value={day}>{day}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
                                     </div>
                                     <Button
                                         type="button"

@@ -6,10 +6,17 @@ import { motion } from "framer-motion";
 import {
   Scale,
   Ruler,
-  Save
+  Save,
+  Loader2
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import axiosInterceptor from "@/api/axiosInterceptor";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
 
 export default function AddProgress() {
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     weight: "",
     chest: "",
@@ -24,8 +31,31 @@ export default function AddProgress() {
   };
 
   const handleSubmit = async () => {
-    // API CALL WILL GO HERE
-    console.log("Progress Submitted:", form);
+    if (!form.weight) {
+      toast.error("Weight is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        weight: parseFloat(form.weight),
+        notes: form.notes,
+        measurements: {
+          chest: form.chest,
+          waist: form.waist,
+          arms: form.arms,
+          thighs: form.thighs
+        }
+      };
+      await axiosInterceptor.post(apiRoutes.Admin + apiRoutes.MemberProgress, payload);
+      toast.success("Progress logged successfully!");
+      navigate("/myprogress");
+    } catch (error) {
+      toast.error("Failed to save progress");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -100,10 +130,20 @@ export default function AddProgress() {
           <div className="flex justify-end">
             <Button
               onClick={handleSubmit}
+              disabled={saving}
               className="bg-gradient-to-r from-violet-500 to-purple-600"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Progress
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Progress
+                </>
+              )}
             </Button>
           </div>
         </GlassCard>

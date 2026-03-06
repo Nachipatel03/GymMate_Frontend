@@ -4,15 +4,20 @@ import GlassCard from '@/components/ui/GlassCard';
 import StatCard from '@/components/ui/StatCard';
 import StatusBadge from '@/components/ui/StatusBadge';
 import AreaChartComponent from '@/components/charts/AreaChartComponent';
-import { 
+import {
   Calendar,
   UserCheck,
   Trophy,
   TrendingUp,
   Clock,
-  Flame
+  Flame,
+  CheckCircle,
+  LogIn
 } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, isToday, parseISO } from 'date-fns';
+import axiosInterceptor from "@/api/axiosInterceptor";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
+import { toast } from 'sonner';
 
 const attendanceHistory = [
   { date: subDays(new Date(), 0), status: 'present', checkIn: '06:30 AM', checkOut: '08:15 AM', duration: '1h 45m' },
@@ -32,10 +37,48 @@ const weeklyData = [
 ];
 
 export default function MyAttendance() {
+  const [attendanceHistory, setAttendanceHistory] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const fetchAttendance = async () => {
+    try {
+      const res = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.MemberAttendance);
+      setAttendanceHistory(res.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch attendance history");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchAttendance();
+  }, []);
+
+  const handleAttendanceAction = async (action) => {
+    try {
+      const res = await axiosInterceptor.post(apiRoutes.Admin + apiRoutes.MemberAttendance, { action });
+      toast.success(res.data.message);
+      fetchAttendance();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Action failed");
+    }
+  };
+
   const totalDays = attendanceHistory.length;
   const presentDays = attendanceHistory.filter(d => d.status === 'present').length;
-  const attendanceRate = Math.round((presentDays / totalDays) * 100);
-  const currentStreak = 3;
+  const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+
+  // Basic streak calculation
+  let currentStreak = 0;
+  for (let i = 0; i < attendanceHistory.length; i++) {
+    if (attendanceHistory[i].status === 'present') currentStreak++;
+    else break;
+  }
+
+  const todayRecord = attendanceHistory.find(r => isToday(parseISO(r.date)));
+
 
   return (
     <DashboardLayout role="member" currentPage="MyAttendance" title="My Attendance">
@@ -66,13 +109,35 @@ export default function MyAttendance() {
             delay={0.2}
           />
           <StatCard
-            title="Best Streak"
-            value="15 days"
-            icon={Trophy}
-            gradient="from-amber-500 to-yellow-600"
+            title="Action Center"
+            value={todayRecord ? (todayRecord.check_out ? "Done" : "Check Out") : "Check In"}
+            icon={todayRecord ? (todayRecord.check_out ? CheckCircle : UserCheck) : LogIn}
+            onClick={() => {
+              if (!todayRecord) handleAttendanceAction('check-in');
+              else if (!todayRecord.check_out) handleAttendanceAction('check-out');
+            }}
+            className="cursor-pointer hover:scale-105 transition-transform"
+            gradient={todayRecord ? (todayRecord.check_out ? "from-emerald-500 to-green-600" : "from-violet-500 to-purple-600") : "from-blue-500 to-cyan-600"}
             delay={0.3}
           />
         </div>
+
+        {/* Action Status Info */}
+        {!loading && (
+          <GlassCard className="p-4 border-violet-500/20 bg-violet-500/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white">
+                <Clock className="w-5 h-5 text-violet-400" />
+                <span>Today's Status: <strong>{todayRecord ? (todayRecord.check_out ? 'Completed' : 'Checked In') : 'Not Checked In'}</strong></span>
+              </div>
+              {todayRecord && (
+                <div className="text-right">
+                  <p className="text-xs text-slate-400">In: {todayRecord.check_in || '--:--'} | Out: {todayRecord.check_out || '--:--'}</p>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Chart and Calendar */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -88,8 +153,8 @@ export default function MyAttendance() {
                 <span className="text-sm font-medium text-emerald-400">Improving</span>
               </div>
             </div>
-            <AreaChartComponent 
-              data={weeklyData} 
+            <AreaChartComponent
+              data={weeklyData}
               dataKey="attendance"
               color="#8b5cf6"
               gradientId="attendanceGradient"
@@ -106,11 +171,10 @@ export default function MyAttendance() {
                 return (
                   <div key={day} className="text-center">
                     <span className="text-xs text-slate-500 block mb-2">{day}</span>
-                    <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center ${
-                      attended 
-                        ? 'bg-emerald-500/20 border border-emerald-500/30' 
+                    <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center ${attended
+                        ? 'bg-emerald-500/20 border border-emerald-500/30'
                         : 'bg-slate-800'
-                    }`}>
+                      }`}>
                       {attended ? (
                         <UserCheck className="w-5 h-5 text-emerald-400" />
                       ) : (
@@ -128,44 +192,44 @@ export default function MyAttendance() {
         <GlassCard delay={0.4}>
           <div className="p-6 border-b border-slate-700/50">
             <h3 className="text-lg font-semibold text-white">Recent History</h3>
-            <p className="text-sm text-slate-400">Last 7 days</p>
+            <p className="text-sm text-slate-400">Your check-in logs</p>
           </div>
           <div className="p-4 space-y-2">
-            {attendanceHistory.map((record, index) => (
-              <div 
+            {loading ? (
+              <div className="p-8 text-center text-slate-500">Loading history...</div>
+            ) : attendanceHistory.length === 0 ? (
+              <div className="p-8 text-center text-slate-500">No attendance records found</div>
+            ) : attendanceHistory.map((record, index) => (
+              <div
                 key={index}
-                className={`flex items-center justify-between p-4 rounded-xl ${
-                  record.status === 'present' 
-                    ? 'bg-slate-800/30' 
+                className={`flex items-center justify-between p-4 rounded-xl ${record.status === 'present'
+                    ? 'bg-slate-800/30'
                     : 'bg-rose-500/5 border border-rose-500/10'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    record.status === 'present' 
-                      ? 'bg-emerald-500/20' 
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${record.status === 'present'
+                      ? 'bg-emerald-500/20'
                       : 'bg-rose-500/20'
-                  }`}>
-                    <span className={`text-lg font-bold ${
-                      record.status === 'present' ? 'text-emerald-400' : 'text-rose-400'
                     }`}>
-                      {format(record.date, 'd')}
+                    <span className={`text-lg font-bold ${record.status === 'present' ? 'text-emerald-400' : 'text-rose-400'
+                      }`}>
+                      {format(parseISO(record.date), 'd')}
                     </span>
                   </div>
                   <div>
                     <p className="font-medium text-white">
-                      {format(record.date, 'EEEE, MMMM d')}
+                      {format(parseISO(record.date), 'EEEE, MMMM d')}
                     </p>
-                    {record.checkIn && (
+                    {record.check_in && (
                       <div className="flex items-center gap-3 text-sm text-slate-500">
-                        <span>In: {record.checkIn}</span>
-                        <span>•</span>
-                        <span>Out: {record.checkOut}</span>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{record.duration}</span>
-                        </div>
+                        <span>In: {record.check_in}</span>
+                        {record.check_out && (
+                          <>
+                            <span>•</span>
+                            <span>Out: {record.check_out}</span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

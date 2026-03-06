@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,9 +34,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import PaymentModal from "@/components/ui/PaymentModal";
 
 
-import axios from "axios";
+import axiosInterceptor from "@/api/axiosInterceptor";
 import apiRoutes from "../../services/ApiRoutes/ApiRoutes";
 
 
@@ -68,7 +70,8 @@ export default function ManageMembers() {
       return false;
     }
 
-    if (!formData.membership_plan_id || formData.membership_plan_id === "none") {
+    if (!editingMember && (!formData.membership_plan_id || formData.membership_plan_id === "none")) {
+
       toastError.validation("Please select a membership plan");
       return false;
     }
@@ -86,17 +89,36 @@ export default function ManageMembers() {
     return true;
   };
 
+  // const createPayment = async (memberId, planId, amount) => {
+  //   try {
+  //     const response = await axios.post(
+  //       apiRoutes.baseUrl + apiRoutes.Payments,
+  //       {
+  //         member: memberId,
+  //         plan: planId,
+  //         amount: amount,
+  //         payment_method: "cash", // static for now
+  //       },
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+  //         },
+  //       }
+  //     );
 
+  //     toast.success("Payment successful & Membership activated 🎉");
+  //     return response.data;
+
+  //   } catch (error) {
+  //     toast.error("Payment failed");
+  //     console.error(error);
+  //   }
+  // };
 
   const fetchMembers = async () => {
     try {
-      const res = await axios.get(
-        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
+      const res = await axiosInterceptor.get(
+        apiRoutes.Admin + apiRoutes.Members
       );
 
       const data = Array.isArray(res.data)
@@ -117,13 +139,8 @@ export default function ManageMembers() {
 
   const fetchTrainers = async () => {
     try {
-      const res = await axios.get(
-        apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Trainers,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
+      const res = await axiosInterceptor.get(
+        apiRoutes.Admin + apiRoutes.Trainers
       );
 
       const data = Array.isArray(res.data)
@@ -143,15 +160,9 @@ export default function ManageMembers() {
 
   const fetchPlans = async () => {
     try {
-      const resget = await axios.get(
-        apiRoutes.baseUrl +
+      const resget = await axiosInterceptor.get(
         apiRoutes.Admin +
-        apiRoutes.Plans,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
+        apiRoutes.Plans
       );
 
       console.log("API response:", resget.data);
@@ -174,6 +185,17 @@ export default function ManageMembers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [deleteMember, setDeleteMember] = useState(null);
+
+  // Payment modal state
+  const [paymentModal, setPaymentModal] = useState({
+    open: false,
+    memberId: null,
+    plan: null,
+    memberName: "",
+    mode: null, // "create" | "activate"
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [pendingCreatePayload, setPendingCreatePayload] = useState(null); // stores form data for deferred create
 
   const isEditMode = Boolean(editingMember);
 
@@ -210,7 +232,7 @@ export default function ManageMembers() {
       full_name: "",
       email: "",
       phone: "",
-      membership_plan: "basic",
+      membership_plan_id: "none",
       status: "active",
       goal: "maintenance",
       height: "",
@@ -229,69 +251,190 @@ export default function ManageMembers() {
 
     if (!validateMemberForm()) return;
 
-
-    const payload = {
-      full_name: formData.full_name,
-      phone: formData.phone,
-      status: formData.status,
-      goal: formData.goal,
-      height: formData.height ? Number(formData.height) : null,
-      weight: formData.weight ? Number(formData.weight) : null,
-      assigned_membership: formData.membership_plan_id,
-      assigned_trainer:
-        formData.assigned_trainer_id === "none"
-          ? null
-          : formData.assigned_trainer_id,
-    };
+    const payload = editingMember
+      ? {
+        assigned_trainer:
+          formData.assigned_trainer_id === "none"
+            ? null
+            : formData.assigned_trainer_id,
+        status: formData.status,
+        goal: formData.goal,
+      }
+      : {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        status: formData.status,
+        goal: formData.goal,
+        height: formData.height ? Number(formData.height) : null,
+        weight: formData.weight ? Number(formData.weight) : null,
+        assigned_membership: formData.membership_plan_id,
+        assigned_trainer:
+          formData.assigned_trainer_id === "none"
+            ? null
+            : formData.assigned_trainer_id,
+      };
 
     try {
       if (editingMember) {
-        // ✅ UPDATE
-        await axios.patch(
-          apiRoutes.baseUrl +
+
+        const planChanged =
+          formData.membership_plan_id &&
+          formData.membership_plan_id !== "none" &&
+          formData.membership_plan_id !== editingMember.active_membership?.plan_id;
+
+        // Update basic member fields first
+        await axiosInterceptor.patch(
           apiRoutes.Admin +
           apiRoutes.MemberDetail(editingMember.id),
-          payload,
           {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            },
+            assigned_trainer:
+              formData.assigned_trainer_id === "none"
+                ? null
+                : formData.assigned_trainer_id,
+            status: formData.status,
+            goal: formData.goal,
           }
         );
 
-        toastSuccess.updated("Member");
+        if (planChanged) {
+          // 💳 Open Payment Modal instead of directly submitting
+          const selectedPlan = plans.find(
+            (plan) => String(plan.id) === String(formData.membership_plan_id)
+          );
+
+          if (!selectedPlan) {
+            toast.error("Selected plan not found");
+            return;
+          }
+
+          setIsModalOpen(false);
+          setPaymentModal({
+            open: true,
+            memberId: editingMember.id,
+            plan: selectedPlan,
+            memberName: editingMember.full_name,
+            mode: "activate",
+          });
+          return; // wait for payment confirmation
+        } else {
+          toastSuccess.updated("Member");
+        }
+
       } else {
-        // ✅ CREATE
-        await axios.post(
-          apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.Members,
-          {
-            ...payload,
-            email: formData.email.toLowerCase(), // only for create
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            },
-          }
+        // 💳 CREATE: open PaymentModal FIRST — don't create member yet
+        const selectedPlan = plans.find(
+          (plan) => String(plan.id) === String(formData.membership_plan_id)
         );
 
-        toastSuccess.created("Member");
+        if (!selectedPlan) {
+          toast.error("Selected plan not found");
+          return;
+        }
+
+        // Store the payload for use after payment confirmation
+        setPendingCreatePayload({
+          ...payload,
+          email: formData.email.toLowerCase(),
+          plan: selectedPlan,
+          memberName: formData.full_name,
+        });
+
+        setIsModalOpen(false);
+        setPaymentModal({
+          open: true,
+          memberId: null,         // ← no ID yet, member not created
+          plan: selectedPlan,
+          memberName: formData.full_name,
+          mode: "create",
+        });
+        return; // wait for payment confirmation
       }
 
       fetchMembers();
       resetForm();
+
     } catch (error) {
+      console.error(error);
+
       if (error.response?.status === 400) {
         const errors = error.response.data;
 
-        if (errors.email) {
-          toastError.validation(errors.email[0]);
-          return;
-        }
+        Object.keys(errors).forEach((field) => {
+          if (Array.isArray(errors[field])) {
+            toastError.validation(errors[field][0]);
+          } else {
+            toastError.validation(errors[field]);
+          }
+        });
+
+        return;
       }
+
       toast.error("Operation failed");
     }
   };
+
+  /* ------------------------- PAYMENT CONFIRM ----------------------------- */
+
+  const handlePaymentConfirm = async (paymentMethod, dueDate) => {
+    setPaymentLoading(true);
+    try {
+      let memberId = paymentModal.memberId;
+
+      // For CREATE mode: first create the member, then process payment
+      if (paymentModal.mode === "create" && pendingCreatePayload) {
+        const { plan, memberName, ...createPayload } = pendingCreatePayload;
+        const memberResponse = await axiosInterceptor.post(
+          apiRoutes.Admin + apiRoutes.Members,
+          createPayload
+        );
+        memberId = memberResponse.data.member_id;
+      }
+
+      // Now call payment API
+      await axiosInterceptor.post(
+        apiRoutes.Admin + apiRoutes.Payments,
+        {
+          member: memberId,
+          plan: paymentModal.plan.id,
+          amount: paymentModal.plan.price,
+          payment_method: paymentMethod,
+          status: paymentMethod === "pay_later" ? "pending" : "completed",
+          due_date: dueDate,
+        }
+      );
+
+      if (paymentModal.mode === "create") {
+        toastSuccess.created("Member & Membership Activated");
+      } else {
+        toastSuccess.created("Membership Activated");
+      }
+
+      setPaymentModal({ open: false, memberId: null, plan: null, memberName: "", mode: null });
+      setPendingCreatePayload(null);
+      fetchMembers();
+      resetForm();
+    } catch (error) {
+      console.error(error);
+
+      if (error.response?.status === 400) {
+        const errors = error.response.data;
+        Object.keys(errors).forEach((field) => {
+          if (Array.isArray(errors[field])) {
+            toastError.validation(errors[field][0]);
+          } else {
+            toastError.validation(errors[field]);
+          }
+        });
+        return;
+      }
+
+      toast.error("Payment failed. Please try again.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
 
   const handleEdit = (member) => {
     setEditingMember(member);
@@ -302,7 +445,8 @@ export default function ManageMembers() {
       phone: member.phone || "",
 
       // ✅ DIRECT UUID mapping
-      membership_plan_id: member.membership_plan_id ?? "none",
+      membership_plan_id: member.active_membership?.plan_id ?? "none",
+
       assigned_trainer_id: member.assigned_trainer_id ?? "none",
 
       status: member.status,
@@ -324,21 +468,21 @@ export default function ManageMembers() {
     if (!deleteMember) return;
 
     try {
-      await axios.delete(
-        apiRoutes.baseUrl +
+      await axiosInterceptor.delete(
         apiRoutes.Admin +
-        apiRoutes.MemberDetail(deleteMember.id),
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        }
+        apiRoutes.MemberDetail(deleteMember.id)
       );
 
       toastSuccess.deleted("Member");
       fetchMembers();
     } catch (error) {
-      toastError.delete("Member");
+      console.error(error);
+      const serverError = error.response?.data?.error || error.response?.data?.detail;
+      if (serverError) {
+        toastError.custom(serverError);
+      } else {
+        toastError.delete("Member");
+      }
     } finally {
       setDeleteMember(null);
     }
@@ -367,7 +511,22 @@ export default function ManageMembers() {
     { header: "Phone", accessor: "phone" },
     {
       header: "Plan",
-      render: (row) => <StatusBadge status={row.membership_plan_name} />,
+      accessor: "active_membership",
+      render: (row) => {
+        const membership = row.active_membership;
+        if (!membership) return <StatusBadge status="none" />;
+
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <StatusBadge status={membership.plan_name} />
+            {membership.start_date && membership.end_date && (
+              <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                {format(new Date(membership.start_date), "MMM d")} - {format(new Date(membership.end_date), "MMM d, yyyy")}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Status",
@@ -384,8 +543,8 @@ export default function ManageMembers() {
     {
       header: "Joined",
       render: (row) =>
-        row.created_at
-          ? format(new Date(row.created_at), "MMM dd, yyyy")
+        row.join_date
+          ? format(new Date(row.join_date), "MMM dd, yyyy")
           : "-",
     },
     {
@@ -424,34 +583,34 @@ export default function ManageMembers() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Members</h2>
-            <p className="text-slate-400">Manage your gym members</p>
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              setEditingMember(null);
-              setFormData({
-                full_name: "",
-                email: "",
-                phone: "",
-                membership_plan_id: "none",
-                status: "active",
-                goal: "maintenance",
-                height: "",
-                weight: "",
-                assigned_trainer_id: "none",
-              });
-              setIsModalOpen(true);
-            }}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Member
-          </Button>
-        </div>
+        <PageHeader
+          title="Members"
+          subtitle="Manage your gym members"
+          action={
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setEditingMember(null);
+                setFormData({
+                  full_name: "",
+                  email: "",
+                  phone: "",
+                  membership_plan_id: "none",
+                  status: "active",
+                  goal: "maintenance",
+                  height: "",
+                  weight: "",
+                  assigned_trainer_id: "none",
+                });
+                setIsModalOpen(true);
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Member
+            </Button>
+          }
+        />
 
         {/* Filters */}
         <GlassCard className="p-4 flex gap-4">
@@ -541,6 +700,7 @@ export default function ManageMembers() {
 
                   <Select
                     value={String(formData.membership_plan_id ?? "none")}
+                    disabled={isEditMode && !editingMember?.can_change_plan}
                     onValueChange={(value) =>
                       setFormData({
                         ...formData,
@@ -703,6 +863,17 @@ export default function ManageMembers() {
           </DialogContent>
         </Dialog>
 
+        {/* 💳 Payment Modal */}
+        <PaymentModal
+          isOpen={paymentModal.open}
+          onClose={() =>
+            setPaymentModal({ open: false, memberId: null, plan: null, memberName: "", mode: null })
+          }
+          onConfirm={handlePaymentConfirm}
+          plan={paymentModal.plan}
+          memberName={paymentModal.memberName}
+          loading={paymentLoading}
+        />
 
       </div>
     </DashboardLayout>

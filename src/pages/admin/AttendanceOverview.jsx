@@ -3,6 +3,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import StatCard from "@/components/ui/StatCard";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import BarChartComponent from "@/components/charts/BarChartComponent";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,47 +15,54 @@ import {
   Users,
   Clock,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import axiosInterceptor from "@/api/axiosInterceptor";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
+import { toast } from "sonner";
 
 /* -------------------------------------------------------------------------- */
-/*                               STATIC DATA                                  */
-/*                   TODO: Replace with API later                              */
+/*                               DYNAMIC DATA                                 */
 /* -------------------------------------------------------------------------- */
 
-// Weekly chart data
-const weeklyData = [
-  { name: "Mon", present: 45, absent: 15 },
-  { name: "Tue", present: 52, absent: 8 },
-  { name: "Wed", present: 48, absent: 12 },
-  { name: "Thu", present: 55, absent: 5 },
-  { name: "Fri", present: 60, absent: 10 },
-  { name: "Sat", present: 38, absent: 22 },
-  { name: "Sun", present: 25, absent: 35 },
-];
-
-// Today attendance list
-const recentAttendance = [
-  { id: 1, member: "John Smith", checkIn: "06:30 AM", checkOut: "08:15 AM", status: "present" },
-  { id: 2, member: "Sarah Wilson", checkIn: "07:00 AM", checkOut: "09:30 AM", status: "present" },
-  { id: 3, member: "Mike Johnson", checkIn: "08:15 AM", checkOut: null, status: "present" },
-  { id: 4, member: "Emma Davis", checkIn: null, checkOut: null, status: "absent" },
-  { id: 5, member: "James Brown", checkIn: "05:45 AM", checkOut: "07:00 AM", status: "present" },
-  { id: 6, member: "Lisa Anderson", checkIn: "09:00 AM", checkOut: null, status: "present" },
-  { id: 7, member: "Robert Taylor", checkIn: null, checkOut: null, status: "absent" },
-];
 
 export default function AttendanceOverview() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [data, setData] = useState({ member_attendance: [], trainer_attendance: [], stats: {} });
+  const [loading, setLoading] = useState(true);
 
-  /* ------------------------------ CALCULATIONS ----------------------------- */
-  // TODO: Replace with API values later
+  const fetchAttendance = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.AdminAttendanceOverview, {
+        params: { date: format(selectedDate, "yyyy-MM-dd") }
+      });
+      setData(res.data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch attendance logs");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalMembers = 60;
-  const presentCount = recentAttendance.filter(
-    (a) => a.status === "present"
-  ).length;
-  const absentCount = totalMembers - presentCount;
-  const attendanceRate = Math.round((presentCount / totalMembers) * 100);
+  React.useEffect(() => {
+    fetchAttendance();
+  }, [selectedDate]);
+
+  const stats = data.stats || {};
+  const attendanceRate = stats.total_members > 0 ? Math.round((stats.present_members / stats.total_members) * 100) : 0;
+
+  // Placeholder for weekly trend (would need a separate historical API for accuracy)
+  const weeklyTrend = [
+    { name: 'Mon', present: 12, absent: 4 },
+    { name: 'Tue', present: 15, absent: 2 },
+    { name: 'Wed', present: 10, absent: 6 },
+    { name: 'Thu', present: 18, absent: 1 },
+    { name: 'Fri', present: stats.present_members || 0, absent: stats.absent_members || 0 },
+    { name: 'Sat', present: 8, absent: 3 },
+    { name: 'Sun', present: 5, absent: 2 },
+  ];
+
 
   const formattedDate = useMemo(
     () => format(selectedDate, "MMMM d, yyyy"),
@@ -66,44 +74,43 @@ export default function AttendanceOverview() {
       <div className="space-y-6">
 
         {/* Header with Date Picker */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Attendance</h2>
-            <p className="text-slate-400">Track member attendance</p>
-          </div>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="bg-slate-800 border-slate-700 text-white"
-              >
-                <CalendarIcon className="w-4 h-4 mr-2" />
-                {formattedDate}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-700">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+        <PageHeader
+          title="Attendance"
+          subtitle="Track member attendance"
+          action={
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="bg-slate-800 border-slate-700 text-white"
+                >
+                  <CalendarIcon className="w-4 h-4 mr-2" />
+                  {formattedDate}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-slate-900 border-slate-700">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                />
+              </PopoverContent>
+            </Popover>
+          }
+        />
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Members"
-            value={totalMembers}
+            value={stats.total_members || 0}
             icon={Users}
             gradient="from-violet-500 to-purple-600"
           />
           <StatCard
             title="Present Today"
-            value={presentCount}
+            value={stats.present_members || 0}
             icon={UserCheck}
             trend="up"
             trendValue={`${attendanceRate}%`}
@@ -111,13 +118,13 @@ export default function AttendanceOverview() {
           />
           <StatCard
             title="Absent Today"
-            value={absentCount}
+            value={stats.absent_members || 0}
             icon={UserX}
             gradient="from-rose-500 to-red-600"
           />
           <StatCard
-            title="Avg Duration"
-            value="1.5 hrs"
+            title="Present Trainers"
+            value={stats.present_trainers || 0}
             icon={Clock}
             gradient="from-amber-500 to-orange-600"
           />
@@ -150,7 +157,7 @@ export default function AttendanceOverview() {
             </div>
 
             <BarChartComponent
-              data={weeklyData}
+              data={weeklyTrend}
               dataKey="present"
               secondaryDataKey="absent"
               height={300}
@@ -159,50 +166,59 @@ export default function AttendanceOverview() {
 
           {/* Today's Attendance */}
           <GlassCard>
-            <div className="p-6 border-b border-slate-700/50">
-              <h3 className="text-lg font-semibold text-white">
-                Today's Log
-              </h3>
-              <p className="text-sm text-slate-400">
-                {format(selectedDate, "EEEE, MMMM d")}
-              </p>
+            <div className="p-6 border-b border-slate-700/50 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {format(selectedDate, "EEEE, MMMM d")} Log
+                </h3>
+              </div>
+              <div className="flex gap-2">
+                <div className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded">Members: {stats.present_members}</div>
+                <div className="text-[10px] bg-violet-500/10 text-violet-400 px-2 py-1 rounded">Trainers: {stats.present_trainers}</div>
+              </div>
             </div>
 
             <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
-              {recentAttendance.map((record) => (
-                <div
-                  key={record.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        record.status === "present"
+              {loading ? (
+                <div className="p-8 text-center text-slate-500">Loading logs...</div>
+              ) : [...data.member_attendance, ...data.trainer_attendance].length === 0 ? (
+                <div className="p-8 text-center text-slate-500">No records found for this date</div>
+              ) : (
+                [...data.member_attendance, ...data.trainer_attendance].map((record, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center ${record.status === "present"
                           ? "bg-emerald-500/20"
                           : "bg-rose-500/20"
-                      }`}
-                    >
-                      {record.status === "present" ? (
-                        <UserCheck className="w-5 h-5 text-emerald-400" />
-                      ) : (
-                        <UserX className="w-5 h-5 text-rose-400" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-medium text-white">
-                        {record.member}
-                      </p>
-                      {record.checkIn && (
-                        <p className="text-xs text-slate-500">
-                          In: {record.checkIn}
-                          {record.checkOut && ` • Out: ${record.checkOut}`}
+                          }`}
+                      >
+                        {record.status === "present" ? (
+                          <UserCheck className="w-5 h-5 text-emerald-400" />
+                        ) : (
+                          <UserX className="w-5 h-5 text-rose-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-white flex items-center gap-2">
+                          {record.member_name || record.trainer_name}
+                          {record.trainer_name && <span className="text-[10px] text-violet-400 bg-violet-400/10 px-1 rounded">Trainer</span>}
                         </p>
-                      )}
+                        {record.check_in && (
+                          <p className="text-xs text-slate-500">
+                            In: {record.check_in}
+                            {record.check_out && ` • Out: ${record.check_out}`}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <StatusBadge status={record.status} />
                   </div>
-                  <StatusBadge status={record.status} />
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </GlassCard>
         </div>

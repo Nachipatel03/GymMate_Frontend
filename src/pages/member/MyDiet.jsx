@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import GlassCard from '@/components/ui/GlassCard';
 import DonutChart from '@/components/charts/DonutChart';
@@ -13,81 +13,18 @@ import {
   Sun,
   Moon,
   Utensils,
-  Check
+  Check,
+  Search,
+  Info
 } from 'lucide-react';
-
-/* ---------------- DIET PLAN ---------------- */
-
-const myDietPlan = {
-  name: 'Muscle Building Nutrition',
-  trainer: 'Coach Mike',
-  dailyGoals: {
-    calories: 2800,
-    protein: 180,
-    carbs: 320,
-    fat: 80,
-    water: 3.5,
-  },
-  meals: [
-    {
-      id: 1,
-      name: 'Breakfast',
-      time: '07:00 AM',
-      icon: Coffee,
-      calories: 600,
-      macros: { protein: 30, carbs: 70, fat: 15 },
-      consumed: false,
-      foods: ['Oatmeal', 'Eggs', 'Banana'],
-    },
-    {
-      id: 2,
-      name: 'Morning Snack',
-      time: '10:00 AM',
-      icon: Apple,
-      calories: 250,
-      macros: { protein: 25, carbs: 20, fat: 10 },
-      consumed: false,
-      foods: ['Protein Shake', 'Almonds'],
-    },
-    {
-      id: 3,
-      name: 'Lunch',
-      time: '01:00 PM',
-      icon: Sun,
-      calories: 800,
-      macros: { protein: 45, carbs: 90, fat: 20 },
-      consumed: false,
-      foods: ['Chicken', 'Rice', 'Vegetables'],
-    },
-    {
-      id: 4,
-      name: 'Dinner',
-      time: '07:00 PM',
-      icon: Moon,
-      calories: 750,
-      macros: { protein: 50, carbs: 60, fat: 25 },
-      consumed: false,
-      foods: ['Salmon', 'Sweet Potato', 'Broccoli'],
-    },
-    {
-      id: 5,
-      name: 'Evening Snack',
-      time: '09:00 PM',
-      icon: Utensils,
-      calories: 200,
-      macros: { protein: 30, carbs: 10, fat: 8 },
-      consumed: false,
-      foods: ['Casein Protein', 'Peanut Butter'],
-    },
-  ],
-};
-
-/* ---------------- COMPONENT ---------------- */
+import axiosInterceptor from "@/api/axiosInterceptor";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
+import { toast } from 'sonner';
 
 export default function MyDiet() {
-  const { dailyGoals } = myDietPlan;
-
-  const [meals, setMeals] = useState(myDietPlan.meals);
+  const [dietPlan, setDietPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [meals, setMeals] = useState([]);
   const [consumed, setConsumed] = useState({
     calories: 0,
     protein: 0,
@@ -96,40 +33,128 @@ export default function MyDiet() {
     water: 0,
   });
 
-  /* ---------------- HANDLERS ---------------- */
+  const waterGoal = 3.5;
 
-  const markMealConsumed = (mealId) => {
-    setMeals((prev) =>
-      prev.map((meal) => {
-        if (meal.id === mealId && !meal.consumed) {
-          setConsumed((c) => ({
-            calories: c.calories + meal.calories,
-            protein: c.protein + meal.macros.protein,
-            carbs: c.carbs + meal.macros.carbs,
-            fat: c.fat + meal.macros.fat,
-            water: c.water,
-          }));
-          return { ...meal, consumed: true };
+  useEffect(() => {
+    const fetchDietData = async () => {
+      try {
+        setLoading(true);
+        // 1. Fetch Diet Plan
+        const planRes = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.MemberDietPlans);
+        let currentPlan = null;
+        if (planRes.data && planRes.data.length > 0) {
+          currentPlan = planRes.data[0];
+          setDietPlan(currentPlan);
         }
-        return meal;
-      })
-    );
+
+        // 2. Fetch Daily Progress
+        const progressRes = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.DailyProgress);
+        const progress = progressRes.data;
+
+        setConsumed(prev => ({
+          ...prev,
+          water: progress.water_consumed || 0
+        }));
+
+        if (currentPlan) {
+          const completedMealNames = progress.completed_meals || [];
+          const updatedMeals = currentPlan.meals.map((m, idx) => ({
+            ...m,
+            id: idx,
+            consumed: completedMealNames.includes(m.name)
+          }));
+          setMeals(updatedMeals);
+          calculateMacros(updatedMeals);
+        }
+
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load diet data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDietData();
+  }, []);
+
+  const calculateMacros = (currentMeals) => {
+    const total = currentMeals.reduce((acc, meal) => {
+      if (meal.consumed) {
+        acc.calories += (meal.calories || 0);
+        acc.protein += (meal.protein || 0);
+        acc.carbs += (meal.carbs || 0);
+        acc.fat += (meal.fat || 0);
+      }
+      return acc;
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    setConsumed(prev => ({
+      ...prev,
+      ...total
+    }));
   };
 
-  const addWater = (amount) => {
+  if (loading) {
+    return (
+      <DashboardLayout role="member" currentPage="MyDiet" title="My Diet">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  /* ---------------- HANDLERS ---------------- */
+
+  const markMealConsumed = async (mealId) => {
+    const updatedMeals = meals.map((meal) => {
+      if (meal.id === mealId && !meal.consumed) {
+        return { ...meal, consumed: true };
+      }
+      return meal;
+    });
+
+    setMeals(updatedMeals);
+    calculateMacros(updatedMeals);
+
+    // Persist to backend
+    try {
+      const completedMealNames = updatedMeals
+        .filter(m => m.consumed)
+        .map(m => m.name);
+
+      await axiosInterceptor.patch(apiRoutes.Admin + apiRoutes.DailyProgress, {
+        completed_meals: completedMealNames
+      });
+    } catch (error) {
+      console.error("Failed to save meal progress:", error);
+    }
+  };
+
+  const addWater = async (amount) => {
+    const newWater = Math.min(consumed.water + amount, waterGoal);
     setConsumed((c) => ({
       ...c,
-      water: Math.min(c.water + amount, dailyGoals.water),
+      water: newWater,
     }));
+
+    // Persist to backend
+    try {
+      await axiosInterceptor.patch(apiRoutes.Admin + apiRoutes.DailyProgress, {
+        water_consumed: newWater
+      });
+    } catch (error) {
+      console.error("Failed to save water progress:", error);
+    }
   };
 
   /* ---------------- PROGRESS ---------------- */
 
-  const caloriesProgress = (consumed.calories / dailyGoals.calories) * 100;
-  const proteinProgress = (consumed.protein / dailyGoals.protein) * 100;
-  const carbsProgress = (consumed.carbs / dailyGoals.carbs) * 100;
-  const fatProgress = (consumed.fat / dailyGoals.fat) * 100;
-  const waterProgress = (consumed.water / dailyGoals.water) * 100;
+  const caloriesProgress = dietPlan ? (consumed.calories / dietPlan.daily_calories) * 100 : 0;
+  const proteinProgress = dietPlan ? (consumed.protein / dietPlan.protein_grams) * 100 : 0;
+  const carbsProgress = dietPlan ? (consumed.carbs / dietPlan.carbs_grams) * 100 : 0;
+  const fatProgress = dietPlan ? (consumed.fat / dietPlan.fat_grams) * 100 : 0;
+  const waterProgress = (consumed.water / waterGoal) * 100;
 
   const macroData = [
     { name: 'Protein', value: consumed.protein, color: '#8b5cf6' },
@@ -148,10 +173,17 @@ export default function MyDiet() {
           <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600">
             <Apple className="w-6 h-6 text-white" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">{myDietPlan.name}</h2>
-            <p className="text-sm text-slate-400">with {myDietPlan.trainer}</p>
-          </div>
+          {dietPlan ? (
+            <div>
+              <h2 className="text-xl font-bold text-white">{dietPlan.name}</h2>
+              <p className="text-sm text-slate-400">with {dietPlan.trainer_name}</p>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-xl font-bold text-white">No Diet Plan</h2>
+              <p className="text-sm text-slate-400">Consult your trainer for a plan</p>
+            </div>
+          )}
         </GlassCard>
 
         {/* Calories & Water */}
@@ -163,7 +195,7 @@ export default function MyDiet() {
                 <span className="text-slate-300">Calories</span>
               </div>
               <span className="text-slate-400">
-                {consumed.calories}/{dailyGoals.calories}
+                {consumed.calories}/{dietPlan?.daily_calories || 0}
               </span>
             </div>
             <Progress value={caloriesProgress} />
@@ -176,7 +208,7 @@ export default function MyDiet() {
                 <span className="text-slate-300">Water</span>
               </div>
               <span className="text-slate-400">
-                {consumed.water}L/{dailyGoals.water}L
+                {consumed.water}L/{waterGoal}L
               </span>
             </div>
             <Progress value={waterProgress} />
@@ -230,27 +262,23 @@ export default function MyDiet() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`p-4 rounded-xl ${
-                  meal.consumed
-                    ? 'bg-emerald-500/10 border border-emerald-500/20'
-                    : 'bg-slate-800/30'
-                }`}
+                className={`p-4 rounded-xl ${meal.consumed
+                  ? 'bg-emerald-500/10 border border-emerald-500/20'
+                  : 'bg-slate-800/30'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-xl ${
-                      meal.consumed ? 'bg-emerald-500/20' : 'bg-slate-700'
-                    }`}>
-                      <meal.icon className={`w-5 h-5 ${
-                        meal.consumed ? 'text-emerald-400' : 'text-slate-400'
-                      }`} />
+                    <div className={`p-3 rounded-xl ${meal.consumed ? 'bg-emerald-500/20' : 'bg-slate-700'
+                      }`}>
+                      <Utensils className={`w-5 h-5 ${meal.consumed ? 'text-emerald-400' : 'text-slate-400'
+                        }`} />
                     </div>
 
                     <div>
                       <h4 className="text-white">{meal.name}</h4>
                       <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        {meal.time} • {meal.calories} cal
+                        {meal.description}
                       </div>
                     </div>
                   </div>
@@ -265,14 +293,31 @@ export default function MyDiet() {
                       onClick={() => markMealConsumed(meal.id)}
                       className="text-sm text-violet-400 hover:text-violet-300"
                     >
-                      Mark eaten
+                      Mark Done
                     </button>
                   )}
                 </div>
               </motion.div>
             ))}
+            {meals.length === 0 && (
+              <div className="p-12 text-center text-slate-500">
+                No specific meals listed in this plan.
+              </div>
+            )}
           </div>
         </GlassCard>
+
+        {dietPlan?.notes && (
+          <GlassCard className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="w-5 h-5 text-violet-400" />
+              <h3 className="text-lg font-semibold text-white">Trainer's Notes</h3>
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              {dietPlan.notes}
+            </p>
+          </GlassCard>
+        )}
 
       </div>
     </DashboardLayout>

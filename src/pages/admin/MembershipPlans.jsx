@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -230,25 +231,25 @@ export default function MembershipPlans() {
 
   /* ------------------------------ CRUD ------------------------------------- */
 
-const handleEdit = (plan) => {
-  if ((plan.assigned_members_count ?? 0) > 0) {
-    toastError.forbidden(
-      "Plan is assigned to members and cannot be updated"
-    );
-    return;
-  }
+  const handleEdit = (plan) => {
+    if ((plan.assigned_members_count ?? 0) > 0) {
+      toastError.forbidden(
+        "Plan is assigned to members and cannot be updated"
+      );
+      return;
+    }
 
-  setEditingPlan(plan);
-  setFormData({
-    name: plan.name,
-    type: plan.type,
-    duration_months: plan.duration_months,
-    price: plan.price,
-    features: plan.features.join("\n"),
-    is_active: plan.is_active,
-  });
-  setIsModalOpen(true);
-};
+    setEditingPlan(plan);
+    setFormData({
+      name: plan.name,
+      type: plan.type,
+      duration_months: plan.duration_months,
+      price: plan.price,
+      features: plan.features.join("\n"),
+      is_active: plan.is_active,
+    });
+    setIsModalOpen(true);
+  };
 
 
 
@@ -299,24 +300,20 @@ const handleEdit = (plan) => {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              Membership Plans
-            </h2>
-            <p className="text-slate-400">
-              Manage your gym membership plans
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Plan
-          </Button>
-        </div>
+        <PageHeader
+          title="Membership Plans"
+          subtitle="Manage your gym membership plans"
+          action={
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Plan
+            </Button>
+          }
+        />
 
         {/* Plans Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

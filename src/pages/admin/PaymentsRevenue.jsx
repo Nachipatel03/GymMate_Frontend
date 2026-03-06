@@ -1,12 +1,16 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import StatCard from "@/components/ui/StatCard";
 import DataTable from "@/components/ui/DataTable";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PageHeader from "@/components/ui/PageHeader";
 import AreaChartComponent from "@/components/charts/AreaChartComponent";
 import DonutChart from "@/components/charts/DonutChart";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import axiosInterceptor from "@/api/axiosInterceptor";
+import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
 import {
   Select,
   SelectContent,
@@ -25,63 +29,46 @@ import {
 import { format } from "date-fns";
 
 /* -------------------------------------------------------------------------- */
-/*                               STATIC DATA                                  */
-/*                   TODO: Replace with API later                              */
-/* -------------------------------------------------------------------------- */
-
-const revenueData = [
-  { name: "Jan", revenue: 12500 },
-  { name: "Feb", revenue: 15000 },
-  { name: "Mar", revenue: 18500 },
-  { name: "Apr", revenue: 16000 },
-  { name: "May", revenue: 21000 },
-  { name: "Jun", revenue: 19500 },
-];
-
-const paymentMethodsData = [
-  { name: "Card", value: 55, color: "#8b5cf6" },
-  { name: "Cash", value: 25, color: "#10b981" },
-  { name: "UPI", value: 15, color: "#06b6d4" },
-  { name: "Bank", value: 5, color: "#f59e0b" },
-];
-
-const INITIAL_PAYMENTS = [
-  { id: 1, member: "John Smith", amount: 79, method: "card", plan: "Premium", status: "completed", date: "2024-01-15" },
-  { id: 2, member: "Sarah Wilson", amount: 249, method: "upi", plan: "VIP", status: "completed", date: "2024-01-15" },
-  { id: 3, member: "Mike Johnson", amount: 29, method: "cash", plan: "Basic", status: "completed", date: "2024-01-14" },
-  { id: 4, member: "Emma Davis", amount: 79, method: "card", plan: "Premium", status: "pending", date: "2024-01-14" },
-  { id: 5, member: "James Brown", amount: 29, method: "bank_transfer", plan: "Basic", status: "completed", date: "2024-01-13" },
-  { id: 6, member: "Lisa Anderson", amount: 249, method: "card", plan: "VIP", status: "failed", date: "2024-01-13" },
-];
-
-/* -------------------------------------------------------------------------- */
 /*                                COMPONENT                                   */
 /* -------------------------------------------------------------------------- */
 
 export default function PaymentsRevenue() {
-  const [payments] = useState(INITIAL_PAYMENTS);
-  // TODO: Replace with API data
+  const [payments, setPayments] = useState([]);
+  const [stats, setStats] = useState({
+    total_revenue: 0,
+    this_month_revenue: 0,
+    pending_amount: 0,
+    total_transactions: 0,
+    trend: [],
+    methods: [],
+  });
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [paymentsRes, statsRes] = await Promise.all([
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.PaymentsList),
+        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.RevenueStats),
+      ]);
+      setPayments(paymentsRes.data);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error("Failed to fetch payment data:", error);
+      toast.error("Failed to load payment data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const [periodFilter, setPeriodFilter] = useState("month");
   const [statusFilter, setStatusFilter] = useState("all");
 
   /* ------------------------------ METRICS ---------------------------------- */
-
-  const totalRevenue = useMemo(
-    () =>
-      payments
-        .filter((p) => p.status === "completed")
-        .reduce((sum, p) => sum + p.amount, 0),
-    [payments]
-  );
-
-  const pendingAmount = useMemo(
-    () =>
-      payments
-        .filter((p) => p.status === "pending")
-        .reduce((sum, p) => sum + p.amount, 0),
-    [payments]
-  );
 
   const filteredPayments = useMemo(
     () =>
@@ -99,12 +86,15 @@ export default function PaymentsRevenue() {
       header: "Member",
       render: (row) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-medium">
-              {row.member.charAt(0)}
+              {row.member_name?.charAt(0)}
             </span>
           </div>
-          <span className="font-medium text-white">{row.member}</span>
+          <div className="flex flex-col">
+            <span className="font-medium text-white line-clamp-1">{row.member_name}</span>
+            <span className="text-xs text-slate-400 line-clamp-1">{row.member_email}</span>
+          </div>
         </div>
       ),
     },
@@ -112,14 +102,14 @@ export default function PaymentsRevenue() {
       header: "Amount",
       render: (row) => (
         <span className="font-semibold text-emerald-400">
-          ${row.amount}
+          ₹{row.amount}
         </span>
       ),
     },
     {
       header: "Plan",
       render: (row) => (
-        <StatusBadge status={row.plan.toLowerCase()} />
+        <StatusBadge status={row.plan_name?.toLowerCase() || "basic"} />
       ),
     },
     {
@@ -128,7 +118,7 @@ export default function PaymentsRevenue() {
         <div className="flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-slate-400" />
           <span className="capitalize text-slate-300">
-            {row.method.replace("_", " ")}
+            {row.payment_method?.replace("_", " ") || "—"}
           </span>
         </div>
       ),
@@ -141,7 +131,13 @@ export default function PaymentsRevenue() {
       header: "Date",
       render: (row) => (
         <span className="text-slate-400">
-          {format(new Date(row.date), "MMM d, yyyy")}
+          {row.status === "pending" && row.due_date ? (
+            <span className="text-amber-400 font-medium">Due: {format(new Date(row.due_date), "MMM d, yyyy")}</span>
+          ) : row.payment_date ? (
+            format(new Date(row.payment_date), "MMM d, yyyy")
+          ) : (
+            "-"
+          )}
         </span>
       ),
     },
@@ -154,25 +150,25 @@ export default function PaymentsRevenue() {
       <div className="space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Revenue</h2>
-            <p className="text-slate-400">Track payments and revenue</p>
-          </div>
-          <Button
-            type="button"
-            className="bg-gradient-to-r from-emerald-500 to-green-600"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
+        <PageHeader
+          title="Revenue"
+          subtitle="Track payments and revenue"
+          action={
+            <Button
+              type="button"
+              className="bg-gradient-to-r from-emerald-500 to-green-600"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Report
+            </Button>
+          }
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Revenue"
-            value={`$${totalRevenue.toLocaleString()}`}
+            value={`₹${Number(stats.total_revenue).toLocaleString()}`}
             icon={DollarSign}
             trend="up"
             trendValue="+18%"
@@ -180,7 +176,7 @@ export default function PaymentsRevenue() {
           />
           <StatCard
             title="This Month"
-            value="$19,500"
+            value={`₹${Number(stats.this_month_revenue).toLocaleString()}`}
             icon={TrendingUp}
             trend="up"
             trendValue="+12%"
@@ -188,13 +184,13 @@ export default function PaymentsRevenue() {
           />
           <StatCard
             title="Pending"
-            value={`$${pendingAmount.toLocaleString()}`}
+            value={`₹${Number(stats.pending_amount).toLocaleString()}`}
             icon={Receipt}
             gradient="from-amber-500 to-orange-600"
           />
           <StatCard
             title="Transactions"
-            value={payments.length}
+            value={stats.total_transactions}
             icon={CreditCard}
             gradient="from-cyan-500 to-blue-600"
           />
@@ -225,7 +221,7 @@ export default function PaymentsRevenue() {
             </div>
 
             <AreaChartComponent
-              data={revenueData}
+              data={stats.trend}
               dataKey="revenue"
               color="#10b981"
               gradientId="revenueGradient"
@@ -240,7 +236,7 @@ export default function PaymentsRevenue() {
             <p className="text-sm text-slate-400 mb-4">
               Distribution by type
             </p>
-            <DonutChart data={paymentMethodsData} height={280} />
+            <DonutChart data={stats.methods} height={280} />
           </GlassCard>
         </div>
 
