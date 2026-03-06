@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import GlassCard from '@/components/ui/GlassCard';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -50,9 +50,6 @@ export default function DietPlans() {
   const fetchMembers = async () => {
     try {
       const res = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.Members);
-      // Only trainers can access this page, and the backend filters members by assigned trainer
-      // if we use a specific "my-members" endpoint. For now, we use the regular members endpoint
-      // which the backend should filter based on the logged-in trainer.
       const data = Array.isArray(res.data) ? res.data : res.data.results || [];
       setMembers(data);
     } catch (error) {
@@ -85,7 +82,7 @@ export default function DietPlans() {
     setEditingPlan(plan);
     setFormData({
       name: plan.name,
-      member_id: plan.member, // Assuming the API returns the member UUID in 'member' field
+      member_id: String(plan.member_id_display) || '',
       daily_calories: plan.daily_calories,
       protein_grams: plan.protein_grams,
       carbs_grams: plan.carbs_grams,
@@ -100,7 +97,6 @@ export default function DietPlans() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Convert string inputs to numbers
     const payload = {
       ...formData,
       daily_calories: parseInt(formData.daily_calories),
@@ -160,14 +156,31 @@ export default function DietPlans() {
     }
   };
 
-  const filteredPlans = dietPlans.filter(plan =>
-    plan.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    plan.member_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Group plans by member using member_id_display
+  const groupedPlans = useMemo(() => {
+    const filtered = dietPlans.filter(plan =>
+      plan.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      plan.member_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const groups = {};
+    filtered.forEach(plan => {
+      const memberId = plan.member_id_display;
+      if (!groups[memberId]) {
+        groups[memberId] = {
+          memberName: plan.member_name || 'Assigned Member',
+          plans: []
+        };
+      }
+      groups[memberId].plans.push(plan);
+    });
+    return groups;
+  }, [dietPlans, searchQuery]);
+
+  const groupedArray = Object.entries(groupedPlans).map(([id, data]) => ({ id, ...data }));
 
   return (
     <DashboardLayout role="trainer" title="Diet Plans">
-      <div className="space-y-6">
+      <div className="space-y-8">
 
         {/* Header */}
         <PageHeader
@@ -189,89 +202,112 @@ export default function DietPlans() {
               placeholder="Search by plan name or member..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-11"
             />
           </div>
         </GlassCard>
 
-        {/* Plans Grid */}
+        {/* Grouped Plans */}
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filteredPlans.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPlans.map((plan, index) => (
-              <motion.div
-                key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <GlassCard className="h-full flex flex-col">
-                  <div className="p-6 flex-1">
-                    <div className="flex justify-between mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                        <Apple className="text-emerald-400 w-6 h-6" />
-                      </div>
-                      <StatusBadge status={plan.status} />
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-white mb-2">{plan.name}</h3>
-
-                    <div className="flex items-center gap-2 mb-4">
-                      <User className="w-4 h-4 text-slate-500" />
-                      <span className="text-sm text-slate-300">
-                        {plan.member_name}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                      <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
-                        <p className="text-violet-400 font-bold">{plan.protein_grams}g</p>
-                        <p className="text-xs text-slate-500 uppercase">Protein</p>
-                      </div>
-                      <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
-                        <p className="text-cyan-400 font-bold">{plan.carbs_grams}g</p>
-                        <p className="text-xs text-slate-500 uppercase">Carbs</p>
-                      </div>
-                      <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
-                        <p className="text-amber-400 font-bold">{plan.fat_grams}g</p>
-                        <p className="text-xs text-slate-500 uppercase">Fat</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-auto">
-                      <div className="flex items-center gap-2">
-                        <Flame className="text-orange-400 w-5 h-5" />
-                        <span className="text-white font-semibold">
-                          {plan.daily_calories} <span className="text-xs text-slate-400 font-normal">cal/day</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    {plan.notes && (
-                      <div className="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 flex gap-2">
-                        <Info className="w-4 h-4 text-slate-500 shrink-0" />
-                        <p className="text-xs text-slate-400 line-clamp-2">{plan.notes}</p>
-                      </div>
-                    )}
+        ) : groupedArray.length > 0 ? (
+          <div className="space-y-12">
+            {groupedArray.map((group) => (
+              <div key={group.id} className="space-y-6">
+                {/* Member Header */}
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <User className="w-5 h-5 text-emerald-400" />
                   </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{group.memberName}</h3>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                      {group.plans.length} Diet {group.plans.length === 1 ? 'Plan' : 'Plans'} Assigned
+                    </p>
+                  </div>
+                  <div className="flex-1 h-px bg-slate-800" />
+                </div>
 
-                  <div className="px-6 py-4 border-t border-slate-700/50 flex justify-end gap-2 bg-slate-900/30">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(plan)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(plan.id)}
+                {/* Plans Grid for this Member */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {group.plans.map((plan, index) => (
+                    <motion.div
+                      key={plan.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2, delay: index * 0.05 }}
                     >
-                      <Trash2 className="w-4 h-4 text-rose-400" />
-                    </Button>
-                  </div>
-                </GlassCard>
-              </motion.div>
+                      <GlassCard className="h-full flex flex-col group hover:border-emerald-500/30 transition-all duration-300">
+                        <div className="p-6 flex-1">
+                          <div className="flex justify-between mb-4">
+                            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 group-hover:bg-emerald-500/30 transition-colors flex items-center justify-center">
+                              <Apple className="text-emerald-400 w-6 h-6" />
+                            </div>
+                            <StatusBadge status={plan.status} />
+                          </div>
+
+                          <h3 className="text-lg font-semibold text-white mb-4 group-hover:text-emerald-400 transition-colors">{plan.name}</h3>
+
+                          <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                            <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+                              <p className="text-violet-400 font-bold">{plan.protein_grams}g</p>
+                              <p className="text-xs text-slate-500 uppercase">Protein</p>
+                            </div>
+                            <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+                              <p className="text-cyan-400 font-bold">{plan.carbs_grams}g</p>
+                              <p className="text-xs text-slate-500 uppercase">Carbs</p>
+                            </div>
+                            <div className="bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+                              <p className="text-amber-400 font-bold">{plan.fat_grams}g</p>
+                              <p className="text-xs text-slate-500 uppercase">Fat</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-auto">
+                            <div className="flex items-center gap-2">
+                              <Flame className="text-orange-400 w-5 h-5" />
+                              <span className="text-white font-semibold">
+                                {plan.daily_calories} <span className="text-xs text-slate-400 font-normal">cal/day</span>
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-500 bg-slate-800/50 px-2 py-1 rounded-full">
+                              {plan.meals?.length || 0} meals
+                            </span>
+                          </div>
+
+                          {plan.notes && (
+                            <div className="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800/50 flex gap-2">
+                              <Info className="w-4 h-4 text-slate-500 shrink-0" />
+                              <p className="text-xs text-slate-400 line-clamp-2">{plan.notes}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-slate-700/50 flex justify-end gap-2 bg-slate-900/30">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(plan)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(plan.id)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (

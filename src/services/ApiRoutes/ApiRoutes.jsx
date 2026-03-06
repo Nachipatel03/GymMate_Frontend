@@ -29,6 +29,7 @@ const apiRoutes = {
   DailyProgress: "diets/daily-progress/",
   MemberProfile: "members/profile/",
   MemberProgress: "members/my-progress/",
+  TrainerMemberProgress: (memberId) => `members/members/${memberId}/progress/`,
 };
 
 export default apiRoutes;

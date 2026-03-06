@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import GlassCard from '@/components/ui/GlassCard';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -174,7 +174,7 @@ export default function WorkoutPlans() {
 
         setFormData({
             name: plan.name,
-            member_id: plan.member_id || '',
+            member_id: String(plan.member_id_display) || '',
             description: plan.description,
             day: plan.day || 'Monday',
             end_time: plan.end_time || '',
@@ -315,10 +315,33 @@ export default function WorkoutPlans() {
     };
 
 
-    const filteredPlans = workoutPlans.filter(plan =>
-        plan.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plan.member_name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const groupedPlans = useMemo(() => {
+        // We handle the filtering first
+        const filtered = workoutPlans.filter(plan =>
+            plan.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            plan.member_name?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        // Then group by member
+        const groups = {};
+        filtered.forEach(plan => {
+            const memberId = plan.member_id_display;
+            if (!groups[memberId]) {
+                groups[memberId] = {
+                    memberName: plan.member_name || 'Assigned Member',
+                    plans: []
+                };
+            }
+            groups[memberId].plans.push(plan);
+        });
+        return groups;
+    }, [workoutPlans, searchQuery]);
+
+    // Convert to array for rendering
+    const groupedArray = Object.entries(groupedPlans || {}).map(([id, data]) => ({
+        id,
+        ...data
+    }));
 
     /* ---------------------------------------------------------------------- */
     /* UI */
@@ -326,16 +349,18 @@ export default function WorkoutPlans() {
 
     return (
         <DashboardLayout role="trainer" currentPage="WorkoutPlans" title="Workout Plans">
-            <div className="space-y-6">
+            <div className="space-y-8">
 
                 {/* Header */}
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-white">Workout Plans</h2>
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">Workout Plans</h2>
+                        <p className="text-sm text-slate-400">Manage daily workout schedules for your members</p>
+                    </div>
                     <Button onClick={() => setIsModalOpen(true)}
                         className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-600/20"
                     >
-
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 mr-2" />
                         Create Plan
                     </Button>
                 </div>
@@ -345,104 +370,135 @@ export default function WorkoutPlans() {
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <Input
-                            placeholder="Search workout plans..."
+                            placeholder="Search by plan name or member..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 h-11"
                         />
                     </div>
                 </GlassCard>
 
-                {/* Plans */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredPlans.map((plan, index) => (
-                        <motion.div
-                            key={plan.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                        >
-                            <GlassCard className="h-full">
-                                <div className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/20">
-                                            <Dumbbell className="w-6 h-6 text-violet-400" />
-                                        </div>
-                                        <StatusBadge status={plan.status} />
+                {/* Grouped Plans */}
+                <div className="space-y-12">
+                    {groupedArray.length === 0 ? (
+                        <GlassCard className="p-12 text-center">
+                            <Dumbbell className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                            <p className="text-slate-400 text-lg">No workout plans found</p>
+                            <Button variant="link" onClick={() => setIsModalOpen(true)} className="text-violet-400 mt-2">
+                                Create your first plan
+                            </Button>
+                        </GlassCard>
+                    ) : (
+                        groupedArray.map((group, gIndex) => (
+                            <div key={group.id} className="space-y-6">
+                                {/* Member Header */}
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
+                                        <User className="w-5 h-5 text-violet-400" />
                                     </div>
-
-                                    <h3 className="text-lg font-semibold text-white mb-2">{plan.name}</h3>
-                                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">{plan.description}</p>
-
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-slate-500" />
-                                            <span className="text-sm text-violet-400 font-medium">{plan.day}</span>
-                                        </div>
-                                        {plan.end_time && (
-                                            <div className="flex items-center gap-2">
-                                                <Clock className="w-4 h-4 text-slate-500" />
-                                                <span className="text-sm text-slate-300">{plan.end_time}</span>
-                                            </div>
-                                        )}
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">{group.memberName}</h3>
+                                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
+                                            {group.plans.length} Daily {group.plans.length === 1 ? 'Plan' : 'Plans'} Assigned
+                                        </p>
                                     </div>
-
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <User className="w-4 h-4 text-slate-500" />
-                                        <span className="text-sm text-slate-300">{plan.member_name || 'Assigned Member'}</span>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Calendar className="w-4 h-4 text-slate-500" />
-                                        <span className="text-xs text-slate-500">
-                                            {plan.start_date && format(new Date(plan.start_date), 'MMM d')} - {plan.end_date && format(new Date(plan.end_date), 'MMM d, yyyy')}
-                                        </span>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-slate-700/50">
-                                        <p className="text-xs text-slate-500 mb-2">Exercises:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(plan.exercises || []).slice(0, 3).map((ex, idx) => (
-                                                <span
-                                                    key={idx}
-                                                    className="px-2 py-1 text-xs bg-slate-800 rounded-lg text-slate-300"
-                                                >
-                                                    {ex.name}
-                                                </span>
-                                            ))}
-                                            {(plan.exercises?.length || 0) > 3 && (
-                                                <span className="px-2 py-1 text-xs bg-slate-800 rounded-lg text-slate-500">
-                                                    +{plan.exercises.length - 3} more
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <div className="flex-1 h-px bg-slate-800" />
                                 </div>
 
-                                <div className="px-6 py-4 border-t border-slate-700/50 flex justify-end gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleEdit(plan)}
-                                        className="text-slate-400 hover:text-white"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setDeletePlan(plan);
-                                            setIsDeleteOpen(true);
-                                        }}
-                                        className="text-slate-400 hover:text-rose-400"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                {/* Plans Grid for this Member */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {group.plans.map((plan, index) => (
+                                        <motion.div
+                                            key={plan.id}
+                                            initial={{ opacity: 0, scale: 0.95 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ duration: 0.2, delay: index * 0.05 }}
+                                        >
+                                            <GlassCard className="h-full group hover:border-violet-500/30 transition-all duration-300">
+                                                <div className="p-6">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 group-hover:from-violet-500/30 group-hover:to-purple-600/30 transition-colors">
+                                                            <Dumbbell className="w-6 h-6 text-violet-400" />
+                                                        </div>
+                                                        <StatusBadge status={plan.status} />
+                                                    </div>
+
+                                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-violet-400 transition-colors">{plan.name}</h3>
+                                                    <p className="text-sm text-slate-400 mb-4 line-clamp-2 min-h-[40px]">{plan.description}</p>
+
+                                                    <div className="flex items-center gap-4 mb-4">
+                                                        <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/50 rounded-lg">
+                                                            <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                                            <span className="text-xs text-violet-400 font-bold">{plan.day}</span>
+                                                        </div>
+                                                        {plan.end_time && (
+                                                            <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/50 rounded-lg">
+                                                                <Clock className="w-3.5 h-3.5 text-slate-500" />
+                                                                <span className="text-xs text-slate-300 font-medium">{plan.end_time}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 mb-4 text-xs text-slate-500">
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                        <span>
+                                                            {plan.start_date && format(new Date(plan.start_date), 'MMM d')} - {plan.end_date ? format(new Date(plan.end_date), 'MMM d, yyyy') : 'Ongoing'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="pt-4 border-t border-slate-700/50">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-tight">Main Exercises</p>
+                                                            <span className="text-[10px] bg-violet-500/10 text-violet-400 px-1.5 py-0.5 rounded-full font-bold">
+                                                                {plan.exercises?.length || 0} Total
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {(plan.exercises || []).slice(0, 3).map((ex, idx) => (
+                                                                <span
+                                                                    key={idx}
+                                                                    className="px-2 py-1 text-[11px] bg-slate-800 border border-slate-700/50 rounded-md text-slate-300"
+                                                                >
+                                                                    {ex.name}
+                                                                </span>
+                                                            ))}
+                                                            {(plan.exercises?.length || 0) > 3 && (
+                                                                <span className="px-2 py-1 text-[11px] bg-slate-800/30 text-slate-500 italic rounded-md">
+                                                                    +{plan.exercises.length - 3} more
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="px-6 py-4 border-t border-slate-700/50 flex justify-end gap-2 bg-slate-800/10">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleEdit(plan)}
+                                                        className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-700/50"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setDeletePlan(plan);
+                                                            setIsDeleteOpen(true);
+                                                        }}
+                                                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </GlassCard>
+                                        </motion.div>
+                                    ))}
                                 </div>
-                            </GlassCard>
-                        </motion.div>
-                    ))}
+                            </div>
+                        ))
+                    )}
                 </div>
 
 
