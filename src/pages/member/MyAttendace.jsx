@@ -54,17 +54,12 @@ export default function MyAttendance() {
 
   React.useEffect(() => {
     fetchAttendance();
-  }, []);
 
-  const handleAttendanceAction = async (action) => {
-    try {
-      const res = await axiosInterceptor.post(apiRoutes.Admin + apiRoutes.MemberAttendance, { action });
-      toast.success(res.data.message);
-      fetchAttendance();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Action failed");
-    }
-  };
+    // Listen for global attendance updates
+    const handleUpdate = () => fetchAttendance();
+    window.addEventListener('attendanceUpdated', handleUpdate);
+    return () => window.removeEventListener('attendanceUpdated', handleUpdate);
+  }, []);
 
   const totalDays = attendanceHistory.length;
   const presentDays = attendanceHistory.filter(d => d.status === 'present').length;
@@ -109,15 +104,10 @@ export default function MyAttendance() {
             delay={0.2}
           />
           <StatCard
-            title="Action Center"
-            value={todayRecord ? (todayRecord.check_out ? "Done" : "Check Out") : "Check In"}
-            icon={todayRecord ? (todayRecord.check_out ? CheckCircle : UserCheck) : LogIn}
-            onClick={() => {
-              if (!todayRecord) handleAttendanceAction('check-in');
-              else if (!todayRecord.check_out) handleAttendanceAction('check-out');
-            }}
-            className="cursor-pointer hover:scale-105 transition-transform"
-            gradient={todayRecord ? (todayRecord.check_out ? "from-emerald-500 to-green-600" : "from-violet-500 to-purple-600") : "from-blue-500 to-cyan-600"}
+            title="Total Sessions"
+            value={totalDays}
+            icon={Trophy}
+            gradient="from-blue-500 to-cyan-600"
             delay={0.3}
           />
         </div>
@@ -172,8 +162,8 @@ export default function MyAttendance() {
                   <div key={day} className="text-center">
                     <span className="text-xs text-slate-500 block mb-2">{day}</span>
                     <div className={`w-10 h-10 mx-auto rounded-xl flex items-center justify-center ${attended
-                        ? 'bg-emerald-500/20 border border-emerald-500/30'
-                        : 'bg-slate-800'
+                      ? 'bg-emerald-500/20 border border-emerald-500/30'
+                      : 'bg-slate-800'
                       }`}>
                       {attended ? (
                         <UserCheck className="w-5 h-5 text-emerald-400" />
@@ -203,14 +193,14 @@ export default function MyAttendance() {
               <div
                 key={index}
                 className={`flex items-center justify-between p-4 rounded-xl ${record.status === 'present'
-                    ? 'bg-slate-800/30'
-                    : 'bg-rose-500/5 border border-rose-500/10'
+                  ? 'bg-slate-800/30'
+                  : 'bg-rose-500/5 border border-rose-500/10'
                   }`}
               >
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${record.status === 'present'
-                      ? 'bg-emerald-500/20'
-                      : 'bg-rose-500/20'
+                    ? 'bg-emerald-500/20'
+                    : 'bg-rose-500/20'
                     }`}>
                     <span className={`text-lg font-bold ${record.status === 'present' ? 'text-emerald-400' : 'text-rose-400'
                       }`}>

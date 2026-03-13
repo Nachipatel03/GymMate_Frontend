@@ -2,6 +2,7 @@ const apiRoutes = {
   baseUrl: import.meta.env.VITE_API_BASE_URL,
   Admin: "api/",
   Auth: "auth/",
+  AdminProfile: "admin/profile/",
   MemberRegister: "register/",
   Members: "members/members/",
   MemberDetail: (id) => `members/members/${id}/`,
@@ -30,6 +31,9 @@ const apiRoutes = {
   MemberProfile: "members/profile/",
   MemberProgress: "members/my-progress/",
   TrainerMemberProgress: (memberId) => `members/members/${memberId}/progress/`,
+  ChangePassword: "change-password/",
+  PasswordReset: "password-reset/",
+  PasswordResetConfirm: "password-reset-confirm/",
 };
 
 export default apiRoutes;

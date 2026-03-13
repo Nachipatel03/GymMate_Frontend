@@ -5,7 +5,8 @@ export default function GlassCard({
   children, 
   className = '', 
   delay = 0,
-  hover = true 
+  hover = true,
+  ...props
 }) {
   return (
     <motion.div
@@ -20,6 +21,7 @@ export default function GlassCard({
         transition-all duration-300
         ${className}
       `}
+      {...props}
     >
       {children}
     </motion.div>

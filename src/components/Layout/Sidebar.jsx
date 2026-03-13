@@ -2,12 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCog, 
-  Calendar, 
-  CreditCard, 
+import {
+  LayoutDashboard,
+  Users,
+  UserCog,
+  Calendar,
+  CreditCard,
   Dumbbell,
   Apple,
   ClipboardList,
@@ -15,7 +15,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Settings as SettingsIcon,
+  Activity,
 } from 'lucide-react';
 
 const adminMenuItems = [
@@ -25,6 +27,7 @@ const adminMenuItems = [
   { icon: CreditCard, label: 'Plans', page: 'MembershipPlans' },
   { icon: ClipboardList, label: 'Attendance', page: 'AttendanceOverview' },
   { icon: TrendingUp, label: 'Payments', page: 'PaymentsRevenue' },
+  { icon: SettingsIcon, label: 'Settings', page: 'Settings' },
 ];
 
 const trainerMenuItems = [
@@ -37,30 +40,32 @@ const trainerMenuItems = [
 
 const memberMenuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', page: 'MemberDashboard' },
+  { icon: CreditCard, label: 'Plans', page: 'MemberPlans' },
   { icon: Dumbbell, label: 'My Workout', page: 'MyWorkout' },
   { icon: Apple, label: 'My Diet', page: 'MyDiet' },
   { icon: Calendar, label: 'Attendance', page: 'MyAttendance' },
   { icon: TrendingUp, label: 'Progress', page: 'MyProgress' },
+  { icon: Activity, label: 'BMI Checker', page: 'BMIChecker' },
 ];
 
-export default function Sidebar({ 
-  role = 'admin', 
-  isOpen, 
-  onToggle, 
+export default function Sidebar({
+  role = 'admin',
+  isOpen,
+  onToggle,
   currentPage,
-  isMobile = false 
+  isMobile = false
 }) {
-  const menuItems = role === 'admin' 
-    ? adminMenuItems 
-    : role === 'trainer' 
-    ? trainerMenuItems 
-    : memberMenuItems;
+  const menuItems = role === 'admin'
+    ? adminMenuItems
+    : role === 'trainer'
+      ? trainerMenuItems
+      : memberMenuItems;
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center justify-between p-6 border-b border-slate-700/50">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="flex items-center gap-3"
@@ -69,7 +74,7 @@ export default function Sidebar({
             <Dumbbell className="w-5 h-5 text-white" />
           </div>
           {isOpen && (
-            <motion.span 
+            <motion.span
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               className="text-xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent"
@@ -95,15 +100,15 @@ export default function Sidebar({
               to={createPageUrl(item.page)}
               className={`
                 flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                ${isActive 
-                  ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-white border border-violet-500/30' 
+                ${isActive
+                  ? 'bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-white border border-violet-500/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                 }
               `}
             >
               <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-violet-400' : ''}`} />
               {isOpen && (
-                <motion.span 
+                <motion.span
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="font-medium"

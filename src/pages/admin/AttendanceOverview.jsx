@@ -14,6 +14,7 @@ import {
   UserX,
   Users,
   Clock,
+  Coffee,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import axiosInterceptor from "@/api/axiosInterceptor";
@@ -205,7 +206,16 @@ export default function AttendanceOverview() {
                       <div>
                         <p className="font-medium text-white flex items-center gap-2">
                           {record.member_name || record.trainer_name}
-                          {record.trainer_name && <span className="text-[10px] text-violet-400 bg-violet-400/10 px-1 rounded">Trainer</span>}
+                          {record.trainer_name && (
+                            <>
+                              <span className="text-[10px] text-violet-400 bg-violet-400/10 px-1 rounded">Trainer</span>
+                              {record.breaks?.some(b => !b.end_time) && (
+                                <span className="text-[10px] text-amber-400 bg-amber-400/10 px-1 rounded flex items-center gap-1">
+                                  <Coffee className="w-2 h-2" /> On Break
+                                </span>
+                              )}
+                            </>
+                          )}
                         </p>
                         {record.check_in && (
                           <p className="text-xs text-slate-500">

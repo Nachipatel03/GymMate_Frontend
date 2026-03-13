@@ -8,6 +8,12 @@ import {
   User,
   ChevronDown,
   Settings,
+  LogIn,
+  CheckCircle,
+  Clock,
+  Coffee,
+  CreditCard,
+  Key,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -21,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
 import axios from "axios";
+import { useAttendance } from "@/hooks/useAttendance";
+
 
 export default function Navbar({ onMenuClick, title = "Dashboard" }) {
   const navigate = useNavigate();
@@ -49,12 +57,18 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
 
   /* ================= LOAD USER ================= */
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    setUser(
-      storedUser
-        ? JSON.parse(storedUser)
-        : { full_name: "Admin User", role: "admin" }
-    );
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem("user");
+      setUser(
+        storedUser
+          ? JSON.parse(storedUser)
+          : { full_name: "Admin User", role: "admin" }
+      );
+    };
+
+    handleStorageChange(); // initial load
+    window.addEventListener("userProfileUpdated", handleStorageChange);
+    return () => window.removeEventListener("userProfileUpdated", handleStorageChange);
   }, []);
 
   /* ================= LOGOUT ================= */
@@ -64,6 +78,11 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
     localStorage.removeItem("user");
     navigate("/login");
   };
+
+  /* ================= ATTENDANCE ================= */
+  const { todayRecord, loading: attendanceLoading, handleAction, isOnBreak } = useAttendance(user);
+
+  const canShowAttendance = user?.role?.toLowerCase() === "member" || user?.role?.toLowerCase() === "trainer";
 
   return (
     <header className="sticky top-0 p-3 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50">
@@ -89,19 +108,120 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
           </motion.h1>
         </div>
 
-        {/* SEARCH */}
-        {/* <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search..."
-              className="w-full pl-10 bg-slate-800/50 border-slate-700 text-white"
-            />
-          </div>
-        </div> */}
-
         {/* RIGHT */}
         <div className="flex items-center gap-2">
+
+          {/* ATTENDANCE & BREAKS (Trainer) */}
+          {user?.role?.toLowerCase() === "trainer" && (
+            <div className="mr-2 hidden sm:block">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant={todayRecord?.check_out ? "outline" : (isOnBreak ? "secondary" : "default")}
+                    disabled={attendanceLoading}
+                    className={`gap-2 h-9 rounded-full px-4 font-bold transition-all ${!todayRecord || todayRecord.check_out
+                        ? "bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20"
+                        : isOnBreak
+                          ? "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20"
+                          : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                      }`}
+                  >
+                    {attendanceLoading ? (
+                      <Clock className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        {isOnBreak ? <Coffee className="w-4 h-4" /> : (todayRecord?.check_out ? <LogIn className="w-4 h-4" /> : (todayRecord ? <LogOut className="w-4 h-4" /> : <LogIn className="w-4 h-4" />))}
+                        <span>
+                          {todayRecord
+                            ? (todayRecord.check_out ? "Resume" : (isOnBreak ? "On Break" : "Active"))
+                            : "Check In"}
+                        </span>
+                        <ChevronDown className="w-3 h-3 opacity-50" />
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700 text-slate-200 w-48">
+                  {(!todayRecord || todayRecord.check_out) ? (
+                    <DropdownMenuItem onClick={() => handleAction('check-in')} className="hover:bg-slate-800 focus:bg-slate-800">
+                      <LogIn className="w-4 h-4 mr-2 text-violet-400" />
+                      {todayRecord?.check_out ? "Resume Session" : "Start Session"}
+                    </DropdownMenuItem>
+                  ) : (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => handleAction(isOnBreak ? 'break-end' : 'break-start')}
+                        className="hover:bg-slate-800 focus:bg-slate-800"
+                      >
+                        <Coffee className="w-4 h-4 mr-2 text-amber-400" />
+                        {isOnBreak ? "End Break" : "Take Break"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-slate-700" />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to check out? This will end your current session.")) {
+                            handleAction('check-out');
+                          }
+                        }}
+                        className="text-red-400 hover:bg-red-500/10 focus:bg-red-500/10"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Finish Day (Check Out)
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
+          {/* ATTENDANCE BUTTON (Member Only) */}
+          {user?.role?.toLowerCase() === "member" && (
+            <div className="mr-2 hidden sm:block">
+              <Button
+                size="sm"
+                variant={todayRecord?.check_out ? "outline" : "default"}
+                disabled={attendanceLoading || todayRecord?.check_out}
+                onClick={() => {
+                  if (!todayRecord) {
+                    handleAction('check-in');
+                  } else {
+                    if (window.confirm("Are you sure you want to check out? This will end your current session.")) {
+                      handleAction('check-out');
+                    }
+                  }
+                }}
+                className={`gap-2 h-9 rounded-full px-4 font-bold transition-all ${!todayRecord
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                    : todayRecord.check_out
+                      ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/5 cursor-default"
+                      : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                  }`}
+              >
+                {attendanceLoading ? (
+                  <Clock className="w-4 h-4 animate-spin" />
+                ) : todayRecord ? (
+                  todayRecord.check_out ? (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Checked In</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogOut className="w-4 h-4" />
+                      <span>Check Out</span>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>Check In</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* NOTIFICATIONS */}
           <Button
@@ -148,14 +268,23 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
               align="end"
               className="w-56 bg-slate-900 border border-slate-700 text-slate-300"
             >
-              <DropdownMenuItem onClick={() => navigate("/profile")}>
-                <User className="w-4 h-4 mr-2" />
-                Profile
-              </DropdownMenuItem>
+              {(user?.role?.toLowerCase() === "member" || user?.role?.toLowerCase() === "admin") && (
+                <DropdownMenuItem onClick={() => navigate(user?.role?.toLowerCase() === "admin" ? "/admin/profile" : "/profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  Profile
+                </DropdownMenuItem>
+              )}
 
-              <DropdownMenuItem>
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+              {user?.role?.toLowerCase() === "member" && (
+                <DropdownMenuItem onClick={() => navigate("/my-plans")}>
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  My Plans
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuItem onClick={() => navigate("/change-password")}>
+                <Key className="w-4 h-4 mr-2" />
+                Reset Password
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />

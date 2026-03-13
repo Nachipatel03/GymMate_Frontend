@@ -67,7 +67,7 @@ export default function TrainerDashboard() {
       setMembers(memberData);
       setWorkoutPlans(workoutRes.data || []);
       setDietPlans(dietRes.data || []);
-      setMemberAttendance(memberAttRes.data || []);
+      setMemberAttendance(memberAttRes.data.attendance || []);
       setTrainerAttendance(trainerAttRes.data || []);
 
       // Try to get trainer profile from localStorage, or use first member's trainer info
@@ -86,17 +86,13 @@ export default function TrainerDashboard() {
 
   useEffect(() => {
     fetchData();
+
+    // Listen for global attendance updates
+    const handleUpdate = () => fetchData();
+    window.addEventListener('attendanceUpdated', handleUpdate);
+    return () => window.removeEventListener('attendanceUpdated', handleUpdate);
   }, []);
 
-  const handleTrainerAction = async (action) => {
-    try {
-      const res = await axiosInterceptor.post(apiRoutes.Admin + apiRoutes.TrainerAttendance, { action });
-      toast.success(res.data.message);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Action failed");
-    }
-  };
 
   /* ---------------------------- CALCULATIONS ----------------------------- */
 
@@ -154,7 +150,7 @@ export default function TrainerDashboard() {
 
         {/* Welcome + Attendance Row */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <GlassCard className="lg:col-span-3 p-6 relative overflow-hidden">
+          <GlassCard className="lg:col-span-4 p-6 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">
@@ -177,54 +173,6 @@ export default function TrainerDashboard() {
                 </div>
               </div>
             </div>
-          </GlassCard>
-
-          {/* Trainer Attendance Card */}
-          <GlassCard className={`p-6 flex flex-col justify-between transition-all ${todayTrainerRecord?.check_out ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-violet-500/30 bg-violet-500/5'}`}>
-            <div className="flex justify-between items-start mb-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${todayTrainerRecord?.check_out ? 'bg-emerald-500/20' : 'bg-violet-500/20'}`}>
-                {todayTrainerRecord
-                  ? (todayTrainerRecord.check_out ? <CheckCircle className="w-6 h-6 text-emerald-400" /> : <Clock className="w-6 h-6 text-violet-400" />)
-                  : <UserCheck className="w-6 h-6 text-violet-400" />}
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">My Attendance</p>
-                <p className={`text-xs font-bold ${todayTrainerRecord?.check_out ? 'text-emerald-400' : 'text-violet-400'}`}>
-                  {todayTrainerRecord ? (todayTrainerRecord.check_out ? 'DONE' : 'ACTIVE') : 'NOT CHECKED IN'}
-                </p>
-              </div>
-            </div>
-
-            {todayTrainerRecord && (
-              <div className="mb-3 space-y-1 text-xs text-slate-400">
-                {todayTrainerRecord.check_in && (
-                  <p>🟢 In: <span className="text-white font-medium">{todayTrainerRecord.check_in}</span></p>
-                )}
-                {todayTrainerRecord.check_out && (
-                  <p>🔴 Out: <span className="text-white font-medium">{todayTrainerRecord.check_out}</span></p>
-                )}
-              </div>
-            )}
-
-            <Button
-              onClick={() => {
-                if (!todayTrainerRecord) handleTrainerAction('check-in');
-                else if (!todayTrainerRecord.check_out) handleTrainerAction('check-out');
-              }}
-              disabled={todayTrainerRecord?.check_out}
-              className={`w-full h-10 gap-2 rounded-xl text-sm font-bold transition-all shadow-lg ${todayTrainerRecord
-                ? (todayTrainerRecord.check_out
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 cursor-default'
-                  : 'bg-red-500 hover:bg-red-600 text-white shadow-red-500/20')
-                : 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-600/20'}`}
-            >
-              {todayTrainerRecord
-                ? (todayTrainerRecord.check_out ? <CheckCircle className="w-4 h-4" /> : <LogOut className="w-4 h-4" />)
-                : <LogIn className="w-4 h-4" />}
-              {todayTrainerRecord
-                ? (todayTrainerRecord.check_out ? 'Present ✓' : 'Check Out')
-                : 'Check In'}
-            </Button>
           </GlassCard>
         </div>
 

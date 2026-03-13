@@ -23,17 +23,32 @@ export default function TrainerAttendance() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [memberAttendance, setMemberAttendance] = useState([]);
   const [trainerAttendance, setTrainerAttendance] = useState([]);
+  const [stats, setStats] = useState({
+    total_members: 0,
+    present_today: 0,
+    absent_today: 0,
+    attendance_rate: 0
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
       const [memberRes, trainerRes] = await Promise.all([
-        axiosInterceptor.get(apiRoutes.Admin + apiRoutes.TrainerMemberAttendance),
+        axiosInterceptor.get(apiRoutes.Admin + apiRoutes.TrainerMemberAttendance + `?date=${dateStr}`),
         axiosInterceptor.get(apiRoutes.Admin + apiRoutes.TrainerAttendance)
       ]);
-      setMemberAttendance(memberRes.data);
-      setTrainerAttendance(trainerRes.data);
+
+      setMemberAttendance(memberRes.data.attendance || []);
+      setStats(memberRes.data.stats || {
+        total_members: 0,
+        present_today: 0,
+        absent_today: 0,
+        attendance_rate: 0
+      });
+      setTrainerAttendance(trainerRes.data || []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch attendance data");
@@ -44,26 +59,24 @@ export default function TrainerAttendance() {
 
   React.useEffect(() => {
     fetchData();
-  }, []);
 
-  const handleTrainerAction = async (action) => {
-    try {
-      const res = await axiosInterceptor.post(apiRoutes.Admin + apiRoutes.TrainerAttendance, { action });
-      toast.success(res.data.message);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Action failed");
-    }
-  };
+    // Listen for global attendance updates
+    const handleUpdate = () => fetchData();
+    window.addEventListener('attendanceUpdated', handleUpdate);
+    return () => window.removeEventListener('attendanceUpdated', handleUpdate);
+  }, [selectedDate]);
 
-  const filteredMembers = memberAttendance.filter(r => isSameDay(parseISO(r.date), selectedDate));
   const todayTrainerRecord = trainerAttendance.find(r => isSameDay(parseISO(r.date), new Date()));
 
-  // Weekly data calculation from memberAttendance
+  // Weekly data calculation - for now we use the today's rate for the current day and mock others
+  // In a real app, this would be another API call for historical daily stats
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const currentDayName = format(selectedDate, 'EEE');
   const weeklyStats = days.map(day => {
-    // Very simplified: just showing count for current week's days
-    return { name: day, present: Math.floor(Math.random() * 20), absent: Math.floor(Math.random() * 5) };
+    if (day === currentDayName) {
+      return { name: day, present: stats.present_today, absent: stats.absent_today };
+    }
+    return { name: day, present: 0, absent: 0 };
   });
 
 
@@ -96,45 +109,34 @@ export default function TrainerAttendance() {
                 />
               </PopoverContent>
             </Popover>
-
-            <Button
-              onClick={() => {
-                if (!todayTrainerRecord) handleTrainerAction('check-in');
-                else if (!todayTrainerRecord.check_out) handleTrainerAction('check-out');
-              }}
-              disabled={todayTrainerRecord?.check_out}
-              className={todayTrainerRecord?.check_out ? "bg-emerald-600/50" : "bg-violet-600 hover:bg-violet-700"}
-            >
-              {todayTrainerRecord ? (todayTrainerRecord.check_out ? "Work Done" : "Check Out") : "Trainer Check In"}
-            </Button>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Total Members"
-            value={24}
+            title="Assigned Members"
+            value={stats.total_members}
             icon={Users}
             gradient="from-violet-500 to-purple-600"
           />
           <StatCard
             title="Present Today"
-            value={18}
+            value={stats.present_today}
             icon={UserCheck}
-            trend="up"
-            trendValue="75%"
+            trend={stats.attendance_rate > 50 ? "up" : "down"}
+            trendValue={`${stats.attendance_rate.toFixed(1)}%`}
             gradient="from-emerald-500 to-green-600"
           />
           <StatCard
             title="Absent Today"
-            value={6}
+            value={stats.absent_today}
             icon={UserX}
             gradient="from-rose-500 to-red-600"
           />
           <StatCard
-            title="Weekly Avg"
-            value="82%"
+            title="Attendance Rate"
+            value={`${stats.attendance_rate.toFixed(0)}%`}
             icon={TrendingUp}
             gradient="from-cyan-500 to-blue-600"
           />
@@ -171,17 +173,17 @@ export default function TrainerAttendance() {
             <div className="p-4 space-y-2">
               {loading ? (
                 <div className="p-8 text-center text-slate-500">Loading records...</div>
-              ) : filteredMembers.length === 0 ? (
+              ) : memberAttendance.length === 0 ? (
                 <div className="p-8 text-center text-slate-500">No records for this date</div>
-              ) : filteredMembers.map((record) => (
+              ) : memberAttendance.map((record) => (
                 <div
                   key={record.id}
                   className="flex items-center justify-between p-4 rounded-xl bg-slate-800/30"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${record.status === 'present'
-                        ? 'bg-emerald-500/20'
-                        : 'bg-rose-500/20'
+                      ? 'bg-emerald-500/20'
+                      : 'bg-rose-500/20'
                       }`}>
                       {record.status === 'present'
                         ? <UserCheck className="w-5 h-5 text-emerald-400" />

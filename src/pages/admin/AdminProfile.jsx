@@ -4,51 +4,32 @@ import GlassCard from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    User,
-    Phone,
-    Mail,
-    Target,
-    Ruler,
-    Scale,
-    Save,
-    Loader2,
-    Camera,
-    CreditCard,
-    Calendar,
-    Clock
-} from "lucide-react";
+import { User, Mail, Phone, Save, Loader2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import axiosInterceptor from "@/api/axiosInterceptor";
 import apiRoutes from "@/services/ApiRoutes/ApiRoutes";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 
-export default function MemberProfile() {
+export default function AdminProfile() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState({
         full_name: "",
         email: "",
         phone: "",
-        goal: "",
-        height: "",
-        weight: "",
-        goal_weight: "",
     });
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const res = await axiosInterceptor.get(apiRoutes.Admin + apiRoutes.MemberProfile);
+                const res = await axiosInterceptor.get(apiRoutes.Auth + apiRoutes.AdminProfile);
                 setProfile({
-                    ...res.data,
-                    height: res.data.height || "",
-                    weight: res.data.weight || "",
-                    goal_weight: res.data.goal_weight || "",
+                    full_name: res.data.full_name || "",
+                    email: res.data.email || "",
+                    phone: res.data.phone || "",
                 });
             } catch (error) {
-                toast.error("Failed to load profile");
+                toast.error("Failed to load admin profile");
             } finally {
                 setLoading(false);
             }
@@ -61,20 +42,27 @@ export default function MemberProfile() {
         setSaving(true);
         try {
             const res = await axiosInterceptor.patch(
-                apiRoutes.Admin + apiRoutes.MemberProfile,
-                profile
+                apiRoutes.Auth + apiRoutes.AdminProfile,
+                { username: profile.full_name, email: profile.email, phone: profile.phone }
             );
-            setProfile(res.data);
+            setProfile({
+                full_name: res.data.full_name || "",
+                email: res.data.email || "",
+                phone: res.data.phone || "",
+            });
             toast.success("Profile updated successfully");
 
-            // Update local storage user if name changed
+            // Update local storage user if name changed to reflect in Navbar immediately
             const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
             localStorage.setItem("user", JSON.stringify({
                 ...storedUser,
-                username: res.data.full_name
+                username: res.data.full_name,
+                email: res.data.email
             }));
+            // Dispatch a custom event to notify Navbar of user change
+            window.dispatchEvent(new Event('userProfileUpdated'));
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to update profile");
+            toast.error(error.response?.data?.message || "Failed to update admin profile");
         } finally {
             setSaving(false);
         }
@@ -82,7 +70,7 @@ export default function MemberProfile() {
 
     if (loading) {
         return (
-            <DashboardLayout role="member" title="My Profile" currentPage="Profile">
+            <DashboardLayout role="admin" title="Admin Profile" currentPage="Profile">
                 <div className="flex items-center justify-center min-h-[400px]">
                     <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
                 </div>
@@ -91,7 +79,7 @@ export default function MemberProfile() {
     }
 
     return (
-        <DashboardLayout role="member" title="My Profile" currentPage="Profile">
+        <DashboardLayout role="admin" title="Admin Profile" currentPage="Profile">
             <div className="max-w-4xl mx-auto space-y-8">
 
                 {/* Profile Header */}
@@ -107,7 +95,7 @@ export default function MemberProfile() {
                         <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
                             <div className="relative group">
                                 <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white shadow-2xl shadow-violet-500/20">
-                                    {profile.full_name?.charAt(0) || "U"}
+                                    {profile.full_name?.charAt(0) || "A"}
                                 </div>
                                 <button className="absolute -bottom-2 -right-2 p-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-400 hover:text-white transition-colors">
                                     <Camera className="w-4 h-4" />
@@ -115,22 +103,20 @@ export default function MemberProfile() {
                             </div>
 
                             <div className="text-center md:text-left">
-                                <h2 className="text-3xl font-bold text-white mb-2">{profile.full_name}</h2>
+                                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                                    <h2 className="text-3xl font-bold text-white">{profile.full_name}</h2>
+                                    <span className="bg-violet-500/20 text-violet-400 text-xs px-2 py-1 rounded border border-violet-500/30 uppercase tracking-widest font-semibold">Admin</span>
+                                </div>
                                 <div className="flex flex-wrap justify-center md:justify-start gap-4">
                                     <div className="flex items-center gap-2 text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
                                         <Mail className="w-4 h-4" />
                                         <span className="text-sm">{profile.email}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-                                        <Target className="w-4 h-4 text-violet-400" />
-                                        <span className="text-sm capitalize">{profile.goal?.replace('_', ' ')}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </GlassCard>
                 </motion.div>
-
 
                 {/* Edit Form */}
                 <motion.div
@@ -149,7 +135,7 @@ export default function MemberProfile() {
                                     </h3>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="full_name" className="text-slate-400">Full Name</Label>
+                                        <Label htmlFor="full_name" className="text-slate-400">Username / Full Name</Label>
                                         <div className="relative">
                                             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                             <Input
@@ -157,7 +143,23 @@ export default function MemberProfile() {
                                                 value={profile.full_name}
                                                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                                                 className="bg-slate-900/50 border-slate-700 pl-10 text-white focus:ring-violet-500"
-                                                placeholder="Your full name"
+                                                placeholder="Admin Name"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-slate-400">Email Address</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                value={profile.email}
+                                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                                                className="bg-slate-900/50 border-slate-700 pl-10 text-white focus:ring-violet-500"
+                                                placeholder="admin@example.com"
                                                 required
                                             />
                                         </div>
@@ -176,93 +178,16 @@ export default function MemberProfile() {
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="goal" className="text-slate-400">Fitness Goal</Label>
-                                        <div className="relative">
-                                            <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                            <select
-                                                id="goal"
-                                                value={profile.goal}
-                                                onChange={(e) => setProfile({ ...profile, goal: e.target.value })}
-                                                className="w-full bg-slate-900/50 border border-slate-700 rounded-md pl-10 pr-4 py-2 text-white focus:ring-violet-500 focus:outline-none appearance-none"
-                                            >
-                                                <option value="weight_loss">Weight Loss</option>
-                                                <option value="muscle_gain">Muscle Gain</option>
-                                                <option value="maintenance">Maintenance</option>
-                                                <option value="endurance">Endurance</option>
-                                            </select>
-                                        </div>
-                                    </div>
                                 </div>
-
-                                {/* Body Metrics */}
-                                <div className="space-y-6">
-                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-                                        <Scale className="w-5 h-5 text-violet-400" />
-                                        Body Metrics
-                                    </h3>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="height" className="text-slate-400">Height (cm)</Label>
-                                            <div className="relative">
-                                                <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                                <Input
-                                                    id="height"
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={profile.height}
-                                                    onChange={(e) => setProfile({ ...profile, height: e.target.value })}
-                                                    className="bg-slate-900/50 border-slate-700 pl-10 text-white focus:ring-violet-500"
-                                                    placeholder="175"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="weight" className="text-slate-400">Weight (kg)</Label>
-                                            <div className="relative">
-                                                <Scale className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                                <Input
-                                                    id="weight"
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={profile.weight}
-                                                    onChange={(e) => setProfile({ ...profile, weight: e.target.value })}
-                                                    className="bg-slate-900/50 border-slate-700 pl-10 text-white focus:ring-violet-500"
-                                                    placeholder="70"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label htmlFor="goal_weight" className="text-slate-400">Target Weight (kg)</Label>
-                                            <div className="relative">
-                                                <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                                <Input
-                                                    id="goal_weight"
-                                                    type="number"
-                                                    step="0.1"
-                                                    value={profile.goal_weight}
-                                                    onChange={(e) => setProfile({ ...profile, goal_weight: e.target.value })}
-                                                    className="bg-slate-900/50 border-slate-700 pl-10 text-white focus:ring-violet-500"
-                                                    placeholder="65"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm">
-                                        Keep your height and weight updated for more accurate workout and diet recommendations.
-                                    </div>
+                                <div className="space-y-6 hidden md:block">
+                                    {/* Empty column for layout balance */}
                                 </div>
                             </div>
 
                             <div className="flex justify-end pt-6 border-t border-slate-700/50">
                                 <Button
                                     type="submit"
-                                    disabled={saving}
+                                    disabled={saving || !profile.full_name || !profile.email}
                                     className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white px-8 h-12 rounded-xl transition-all duration-300 shadow-lg shadow-violet-500/20 active:scale-95"
                                 >
                                     {saving ? (

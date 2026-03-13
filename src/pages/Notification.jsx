@@ -213,8 +213,9 @@ export default function Notifications() {
                                                     </h3>
 
                                                     <span className="text-xs text-slate-500">
-                                                        {format(new Date(notification.created_at)
-                                                            , 'MMM d, h:mm a')}
+                                                        {notification.created_at && !isNaN(new Date(notification.created_at).getTime())
+                                                            ? format(new Date(notification.created_at), 'MMM d, h:mm a')
+                                                            : 'Just now'}
                                                     </span>
                                                 </div>
 

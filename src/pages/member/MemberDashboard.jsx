@@ -260,7 +260,13 @@ export default function MemberDashboard() {
             ) : (
               <div className="text-center py-4">
                 <p className="text-amber-400 font-bold mb-2">No Active Plan</p>
-                <p className="text-xs text-slate-500">Contact admin to activate</p>
+                <p className="text-xs text-slate-500 mb-3">Subscribe to a plan to start your journey.</p>
+                <Button
+                  onClick={() => window.location.href = '/memberplans'}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs py-1 h-8 px-4"
+                >
+                  View Plans
+                </Button>
               </div>
             )}
           </GlassCard>
