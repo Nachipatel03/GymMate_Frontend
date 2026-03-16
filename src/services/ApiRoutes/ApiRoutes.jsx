@@ -15,6 +15,7 @@ const apiRoutes = {
   Payments: "payments/payments/create/",
   Notifications: "notifications/",
   NotificationRead: (id) => `notifications/${id}/read/`,
+  NotificationMarkAllRead: "notifications/mark-all-read/",
   NotificationDelete: (id) => `notifications/${id}/read/`,
   NotificationUnreadCount: "notifications/unread-count/",
   PaymentsList: "payments/payments/list/",

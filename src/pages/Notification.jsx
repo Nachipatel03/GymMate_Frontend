@@ -38,7 +38,7 @@ const dummyNotifications = [
     {
         id: 2,
         title: 'Payment Received',
-        message: 'Payment of $150 received from Sarah Wilson',
+        message: 'Payment of ₹150 received from Sarah Wilson',
         type: 'success',
         is_read: false,
         created_date: new Date(Date.now() - 3600000).toISOString()
@@ -129,10 +129,24 @@ export default function Notifications() {
 
 
 
-    const markAllAsRead = () => {
-        setNotifications(prev =>
-            prev.map(n => ({ ...n, is_read: true }))
-        );
+    const markAllAsRead = async () => {
+        try {
+            await axios.patch(
+                apiRoutes.baseUrl + apiRoutes.Auth + apiRoutes.NotificationMarkAllRead,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+                    },
+                }
+            );
+
+            setNotifications(prev =>
+                prev.map(n => ({ ...n, is_read: true }))
+            );
+        } catch (error) {
+            console.error("Failed to mark all as read", error);
+        }
     };
 
     return (

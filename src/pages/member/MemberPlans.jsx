@@ -94,7 +94,7 @@ export default function MemberPlans() {
                                     <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                                     <div className="flex items-baseline justify-center gap-1">
                                         <span className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400">
-                                            ${plan.price}
+                                            ₹{plan.price}
                                         </span>
                                         <span className="text-slate-400">/{plan.duration_months} mo</span>
                                     </div>

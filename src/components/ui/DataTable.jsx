@@ -33,7 +33,7 @@ export default function DataTable({
                 key={row.id || rowIdx}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: rowIdx * 0.05 }}
+                transition={{ delay: rowIdx * 0.02 }}
                 onClick={() => onRowClick?.(row)}
                 className="hover:bg-slate-800/30 cursor-pointer transition-colors duration-200"
               >

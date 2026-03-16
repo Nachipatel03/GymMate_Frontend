@@ -11,7 +11,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import {
   Users,
   UserCog,
-  DollarSign,
+  IndianRupee,
   UserCheck,
   UserX,
   TrendingUp,
@@ -144,7 +144,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatCard title="Total Members" value={members.length} icon={Users} />
           <StatCard title="Total Trainers" value={trainers.length} icon={UserCog} />
-          <StatCard title="Total Revenue" value={`$${revenueStats.total_revenue || 0}`} icon={DollarSign} />
+          <StatCard title="Total Revenue" value={`₹${revenueStats.total_revenue || 0}`} icon={IndianRupee} />
           <StatCard title="Present Today" value={attendanceStats.present_members || 0} icon={UserCheck} />
           <StatCard title="Absent Today" value={attendanceStats.absent_members || 0} icon={UserX} />
           <StatCard title="Active Plans" value={members.filter(m => m.status === "active").length} icon={Calendar} />

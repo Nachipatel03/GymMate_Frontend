@@ -68,7 +68,7 @@ export default function CheckoutModal({ isOpen, onClose, plan, onSuccess }) {
                             <h3 className="text-sm font-medium text-slate-400 mb-2">Order Summary</h3>
                             <div className="flex justify-between items-center text-white mb-2">
                                 <span className="font-semibold">{plan.name} Plan</span>
-                                <span className="font-bold">${plan.price}</span>
+                                <span className="font-bold">₹{plan.price}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm text-slate-400">
                                 <span>Duration</span>
@@ -108,7 +108,7 @@ export default function CheckoutModal({ isOpen, onClose, plan, onSuccess }) {
                             disabled={loading}
                             className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold hover:from-violet-500 hover:to-purple-500 transition-all duration-200 shadow-lg shadow-violet-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Processing...' : `Pay $${plan.price}`}
+                            {loading ? 'Processing...' : `Pay ₹${plan.price}`}
                         </button>
                     </div>
                 </motion.div>

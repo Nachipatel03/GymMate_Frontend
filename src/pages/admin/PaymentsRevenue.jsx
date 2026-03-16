@@ -19,13 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   CreditCard,
   Receipt,
   Download,
   Filter,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 
 /* -------------------------------------------------------------------------- */
@@ -43,41 +45,75 @@ export default function PaymentsRevenue() {
     methods: [],
   });
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginationInfo, setPaginationInfo] = useState({
+    count: 0,
+    next: null,
+    previous: null,
+  });
 
-  const fetchData = async () => {
+  const fetchPayments = async (page = 1, search = searchQuery, status = statusFilter) => {
     try {
       setLoading(true);
-      const [paymentsRes, statsRes] = await Promise.all([
-        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.PaymentsList),
-        axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.RevenueStats),
-      ]);
-      setPayments(paymentsRes.data);
-      setStats(statsRes.data);
+      const res = await axiosInterceptor.get(`${apiRoutes.baseUrl}${apiRoutes.Admin}${apiRoutes.PaymentsList}`, {
+        params: {
+          page: page,
+          search: search,
+          status: status
+        }
+      });
+      
+      setPayments(res.data.results || []);
+      setPaginationInfo({
+        count: res.data.count,
+        next: res.data.next,
+        previous: res.data.previous,
+      });
+      setCurrentPage(page);
     } catch (error) {
-      console.error("Failed to fetch payment data:", error);
-      toast.error("Failed to load payment data");
+      console.error("Failed to fetch payments:", error);
+      toast.error("Failed to load payments");
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const res = await axiosInterceptor.get(apiRoutes.baseUrl + apiRoutes.Admin + apiRoutes.RevenueStats);
+      setStats(res.data);
+    } catch (error) {
+      console.error("Failed to fetch revenue stats:", error);
+    }
+  };
+
+  // Fetch stats only once on mount
   useEffect(() => {
-    fetchData();
+    fetchStats();
   }, []);
 
+  // Fetch payments when status changes (immediate)
+  useEffect(() => {
+    fetchPayments(1, searchQuery, statusFilter);
+  }, [statusFilter]);
+
+  // Handle search with debounce (only for search input)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPayments(1, searchQuery, statusFilter);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const [periodFilter, setPeriodFilter] = useState("month");
-  const [statusFilter, setStatusFilter] = useState("all");
 
   /* ------------------------------ METRICS ---------------------------------- */
 
-  const filteredPayments = useMemo(
-    () =>
-      payments.filter(
-        (payment) =>
-          statusFilter === "all" || payment.status === statusFilter
-      ),
-    [payments, statusFilter]
-  );
+  // Removed client-side filteredPayments as it's now handled by backend
+  const displayPayments = payments;
 
   /* ------------------------------ TABLE ------------------------------------ */
 
@@ -103,6 +139,14 @@ export default function PaymentsRevenue() {
       render: (row) => (
         <span className="font-semibold text-emerald-400">
           ₹{row.amount}
+        </span>
+      ),
+    },
+    {
+      header: "Invoice ID",
+      render: (row) => (
+        <span className="text-slate-300 font-mono text-xs">
+          {row.invoice_number || "—"}
         </span>
       ),
     },
@@ -143,6 +187,10 @@ export default function PaymentsRevenue() {
     },
   ];
 
+  const handlePageChange = (page) => {
+    fetchPayments(page, searchQuery, statusFilter);
+  };
+
   /* ------------------------------- UI -------------------------------------- */
 
   return (
@@ -169,7 +217,7 @@ export default function PaymentsRevenue() {
           <StatCard
             title="Total Revenue"
             value={`₹${Number(stats.total_revenue).toLocaleString()}`}
-            icon={DollarSign}
+            icon={IndianRupee}
             trend="up"
             trendValue="+18%"
             gradient="from-emerald-500 to-green-600"
@@ -252,21 +300,39 @@ export default function PaymentsRevenue() {
               </p>
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-3">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  placeholder="Search name or invoice..."
+                  className="pl-9 bg-slate-800/50 border-slate-700"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <DataTable columns={columns} data={filteredPayments} />
+          <DataTable 
+            columns={columns} 
+            data={displayPayments} 
+            currentPage={currentPage}
+            totalPages={Math.ceil(paginationInfo.count / 10)}
+            onPageChange={handlePageChange}
+          />
         </GlassCard>
 
       </div>

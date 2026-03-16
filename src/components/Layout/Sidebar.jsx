@@ -148,11 +148,11 @@ export default function Sidebar({
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             />
             <motion.aside
-              initial={{ x: -280 }}
+              initial={{ x: -256 }}
               animate={{ x: 0 }}
-              exit={{ x: -280 }}
+              exit={{ x: -256 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="fixed left-0 top-0 bottom-0 w-72 bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 z-50 lg:hidden"
+              className="fixed left-0 top-0 bottom-0 w-64 bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 z-50 lg:hidden"
             >
               {sidebarContent}
             </motion.aside>
@@ -165,7 +165,7 @@ export default function Sidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isOpen ? 256 : 80 }}
+      animate={{ width: isOpen ?180 : 72 }}
       className="hidden lg:flex flex-col bg-slate-900/80 backdrop-blur-xl border-r border-slate-700/50 h-screen sticky top-0"
     >
       {sidebarContent}

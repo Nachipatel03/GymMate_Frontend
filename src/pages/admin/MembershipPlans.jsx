@@ -339,7 +339,7 @@ export default function MembershipPlans() {
                     </h3>
                     <div className="flex items-baseline gap-1 mt-2">
                       <span className="text-3xl font-bold text-white">
-                        ${plan.price}
+                        ₹{plan.price}
                       </span>
                       <span className="text-white/70">
                         /{plan.duration_months} mo
@@ -452,7 +452,7 @@ export default function MembershipPlans() {
               </div>
 
               <div>
-                <Label>Price ($)</Label>
+                <Label>Price (₹)</Label>
                 <Input
                   type="number"
                   value={formData.price}
