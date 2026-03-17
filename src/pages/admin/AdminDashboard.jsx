@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/Layout/DashboardLayout";
 import StatCard from "@/components/ui/StatCard";
 import GlassCard from "@/components/ui/GlassCard";
 import DataTable from "@/components/ui/DataTable";
