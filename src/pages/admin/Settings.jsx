@@ -1,5 +1,5 @@
 import React from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/Layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { motion } from 'framer-motion';
 import { CreditCard, CheckCircle2, Shield, Zap } from 'lucide-react';
 import axiosInterceptor from '@/api/axiosInterceptor';

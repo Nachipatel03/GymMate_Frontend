@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/Layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import StatCard from "@/components/ui/StatCard";
 import AreaChartComponent from "@/components/charts/AreaChartComponent";

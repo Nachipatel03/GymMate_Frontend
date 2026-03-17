@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import DashboardLayout from "@/components/Layout/DashboardLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import { 
     CreditCard, 
