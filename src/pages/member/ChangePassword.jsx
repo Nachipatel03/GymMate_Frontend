@@ -70,7 +70,7 @@ export default function ChangePassword() {
 
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="old_password text-slate-400">Current Password</Label>
+                                <Label htmlFor="old_password" className="text-slate-400">Current Password</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                     <Input
@@ -86,7 +86,7 @@ export default function ChangePassword() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="new_password text-slate-400">New Password</Label>
+                                <Label htmlFor="new_password" className="text-slate-400">New Password</Label>
                                 <div className="relative">
                                     <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                     <Input
@@ -102,7 +102,7 @@ export default function ChangePassword() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="confirm_password text-slate-400">Confirm New Password</Label>
+                                <Label htmlFor="confirm_password" className="text-slate-400">Confirm New Password</Label>
                                 <div className="relative">
                                     <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                     <Input
