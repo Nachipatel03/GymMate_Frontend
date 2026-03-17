@@ -141,7 +141,7 @@ export default function AdminDashboard() {
         />
 
         {/* STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-4 md:gap-4">
           <StatCard title="Total Members" value={members.length} icon={Users} />
           <StatCard title="Total Trainers" value={trainers.length} icon={UserCog} />
           <StatCard title="Total Revenue" value={`₹${revenueStats.total_revenue || 0}`} icon={IndianRupee} />
@@ -151,20 +151,24 @@ export default function AdminDashboard() {
         </div>
 
         {/* CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Attendance Trend</h3>
-            <BarChartComponent data={weeklyAttendanceTrend} dataKey="present" secondaryDataKey="absent" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <GlassCard className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Attendance Trend</h3>
+            <div className="h-64 sm:h-72 lg:h-80 w-full">
+              <BarChartComponent data={weeklyAttendanceTrend} dataKey="present" secondaryDataKey="absent" />
+            </div>
           </GlassCard>
 
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Revenue Overview</h3>
-            <AreaChartComponent data={revenueStats.trend || []} dataKey="revenue" />
+          <GlassCard className="p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-4">Revenue Overview</h3>
+            <div className="h-64 sm:h-72 lg:h-80 w-full">
+              <AreaChartComponent data={revenueStats.trend || []} dataKey="revenue" />
+            </div>
           </GlassCard>
         </div>
 
         {/* TABLE + DONUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <GlassCard className="lg:col-span-2 p-0">
             <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
               <DataTable
@@ -174,12 +178,14 @@ export default function AdminDashboard() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Membership Distribution</h3>
+          <GlassCard className="p-4 sm:p-6 flex flex-col items-center">
+            <h3 className="text-base sm:text-lg font-semibold text-white w-full text-left mb-4">Membership Distribution</h3>
             {membershipDistribution.length > 0 ? (
-              <DonutChart data={membershipDistribution} />
+              <div className="h-64 sm:h-72 lg:h-80 w-full">
+                <DonutChart data={membershipDistribution} />
+              </div>
             ) : (
-              <div className="text-sm text-slate-500 text-center py-10">No active plans found</div>
+              <div className="text-sm text-slate-500 text-center py-10 w-full">No active plans found</div>
             )}
           </GlassCard>
         </div>

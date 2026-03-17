@@ -613,18 +613,18 @@ export default function ManageMembers() {
         />
 
         {/* Filters */}
-        <GlassCard className="p-4 flex gap-4">
+        <GlassCard className="p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
@@ -638,7 +638,7 @@ export default function ManageMembers() {
         </GlassCard>
 
         <GlassCard className="p-0">
-          <div className="relative max-h-[1000px] overflow-y-auto overflow-x-hidden custom-scrollbar">
+          <div className="relative max-h-[1000px] overflow-y-auto overflow-x-auto custom-scrollbar">
             <DataTable columns={columns} data={filteredMembers} />
           </div>
         </GlassCard>

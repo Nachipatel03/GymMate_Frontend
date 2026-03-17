@@ -43,13 +43,21 @@ export default function BarChartComponent({
         <XAxis
           dataKey={xAxisKey}
           stroke="#64748b"
-          fontSize={12}
+          tick={({ x, y, payload }) => (
+            <text x={x} y={y + 10} textAnchor="middle" fill="#64748b" fontSize={window.innerWidth < 640 ? 10 : 12}>
+              {payload.value}
+            </text>
+          )}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
           stroke="#64748b"
-          fontSize={12}
+          tick={({ x, y, payload }) => (
+            <text x={x - 10} y={y} textAnchor="end" fill="#64748b" fontSize={window.innerWidth < 640 ? 10 : 12}>
+              {payload.value}
+            </text>
+          )}
           tickLine={false}
           axisLine={false}
         />

@@ -23,7 +23,7 @@ export default function DashboardLayout({
         duration={2000}  
       />
 
-      <div className="min-h-screen bg-slate-950 flex">
+      <div className="min-h-screen bg-slate-950 flex overflow-x-hidden w-full relative">
         {/* Background Gradient Effects */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
@@ -50,12 +50,12 @@ export default function DashboardLayout({
         />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-h-screen relative z-10">
+        <div className="flex-1 min-w-0 flex flex-col min-h-screen relative z-10">
           <Navbar
             onMenuClick={() => setMobileSidebarOpen(true)}
             title={title}
           />
-          <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          <main className="flex-1 min-w-0 p-3 sm:p-4 lg:p-6 overflow-auto">
             {children}
           </main>
         </div>

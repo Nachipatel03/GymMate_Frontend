@@ -12,9 +12,9 @@ export default function DataTable({
   onPageChange
 }) {
   return (
-    <div className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
+    <div className="w-full min-w-0 overflow-hidden">
+      <div className="w-full overflow-x-auto custom-scrollbar">
+        <table className="w-full min-w-[700px] sm:min-w-full">
           <thead>
             <tr className="border-b border-slate-700/50">
               {columns.map((column, idx) => (
