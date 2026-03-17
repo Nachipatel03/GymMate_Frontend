@@ -85,8 +85,8 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
   const canShowAttendance = user?.role?.toLowerCase() === "member" || user?.role?.toLowerCase() === "trainer";
 
   return (
-    <header className="sticky top-0 p-3 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-16">
+    <header className="sticky top-0 p-2 sm:p-3 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50">
+      <div className="flex items-center justify-between px-2 sm:px-4 lg:px-6 h-14 sm:h-16">
 
         {/* LEFT */}
         <div className="flex items-center gap-4">
@@ -137,7 +137,7 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
                             ? (todayRecord.check_out ? "Resume" : (isOnBreak ? "On Break" : "Active"))
                             : "Check In"}
                         </span>
-                        <ChevronDown className="w-3 h-3 opacity-50" />
+                        <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
                       </>
                     )}
                   </Button>
@@ -243,10 +243,10 @@ export default function Navbar({ onMenuClick, title = "Dashboard" }) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 px-2 hover:bg-slate-800"
+                className="flex items-center gap-2 px-1 sm:px-2 hover:bg-slate-800"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white text-xs sm:text-sm font-medium">
                     {user?.username?.charAt(0) || "U"}
                   </span>
                 </div>

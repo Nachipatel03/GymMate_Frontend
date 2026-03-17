@@ -149,8 +149,8 @@ export default function TrainerDashboard() {
       <div className="space-y-6">
 
         {/* Welcome + Attendance Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <GlassCard className="lg:col-span-4 p-6 relative overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+          <GlassCard className="lg:col-span-4 p-4 sm:p-6 relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">
@@ -177,7 +177,7 @@ export default function TrainerDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Assigned Members"
             value={members.length}
@@ -205,9 +205,9 @@ export default function TrainerDashboard() {
         </div>
 
         {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Member Attendance Trend */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">Member Attendance</h3>
@@ -219,14 +219,15 @@ export default function TrainerDashboard() {
               </div>
             </div>
             {memberAttendance.length > 0 ? (
-              <AreaChartComponent
-                data={attendanceTrend}
-                dataKey="present"
-                xAxisKey="name"
-                color="#8b5cf6"
-                height={240}
-                gradientId="attendanceGrad"
-              />
+              <div className="h-56 sm:h-64 lg:h-[240px] w-full">
+                <AreaChartComponent
+                  data={attendanceTrend}
+                  dataKey="present"
+                  xAxisKey="name"
+                  color="#8b5cf6"
+                  gradientId="attendanceGrad"
+                />
+              </div>
             ) : (
               <div className="h-[240px] flex items-center justify-center text-slate-500 text-sm">
                 No attendance data yet
@@ -235,17 +236,17 @@ export default function TrainerDashboard() {
           </GlassCard>
 
           {/* Goal Distribution */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-white">Member Goals</h3>
               <p className="text-xs text-slate-500">Distribution across all assigned members</p>
             </div>
             {goalDistribution.length > 0 ? (
-              <div className="flex items-center gap-6">
-                <div className="flex-1">
-                  <DonutChart data={goalDistribution} height={220} />
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="w-full sm:flex-1 h-56 sm:h-[220px]">
+                  <DonutChart data={goalDistribution} />
                 </div>
-                <div className="space-y-3 min-w-[130px]">
+                <div className="space-y-3 min-w-full sm:min-w-[130px]">
                   {goalDistribution.map(item => (
                     <div key={item.name} className="flex items-center gap-2">
                       <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
@@ -266,10 +267,10 @@ export default function TrainerDashboard() {
         </div>
 
         {/* Today's Sessions + Active Members */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
 
           {/* Today's Workout Sessions */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">Today's Sessions</h3>
@@ -304,7 +305,7 @@ export default function TrainerDashboard() {
           </GlassCard>
 
           {/* Today's Member Attendance */}
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">Member Attendance Today</h3>
@@ -352,7 +353,7 @@ export default function TrainerDashboard() {
 
         {/* Diet Plans Summary */}
         {dietPlans.length > 0 && (
-          <GlassCard className="p-6">
+          <GlassCard className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">Active Diet Plans</h3>
@@ -362,7 +363,7 @@ export default function TrainerDashboard() {
                 {activeDiets} Active
               </span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {dietPlans.filter(d => d.status === 'active').slice(0, 6).map(plan => (
                 <div key={plan.id} className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl border border-slate-700/30 hover:border-emerald-500/30 transition-colors">
                   <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
