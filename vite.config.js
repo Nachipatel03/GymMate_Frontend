@@ -9,4 +9,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+
+  server: {
+    host: true
+  },
+
+  preview: {
+    host: true,
+    allowedHosts: 'all'
+  }
 })
