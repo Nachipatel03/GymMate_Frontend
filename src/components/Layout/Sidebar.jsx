@@ -165,7 +165,7 @@ export default function Sidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isOpen ?180 : 72 }}
+      animate={{ width: isOpen ?200 : 72 }}
       className="hidden lg:flex flex-col bg-slate-900/80 backdrop-blur-xl border-r border-slate-700/50 h-screen sticky top-0"
     >
       {sidebarContent}
